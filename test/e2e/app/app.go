@@ -203,20 +203,20 @@ func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain)
 }
 
 // CheckTx implements ABCI.
-func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTxV2, error) {
 	key, _, err := parseTx(req.Tx)
 	if err != nil || key == prefixReservedKey {
-		return &abci.ResponseCheckTx{
+		return &abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{
 			Code: kvstore.CodeTypeEncodingError,
 			Log:  err.Error(),
-		}, nil
+		}}, nil
 	}
 
 	if app.cfg.CheckTxDelay != 0 {
 		time.Sleep(app.cfg.CheckTxDelay)
 	}
 
-	return &abci.ResponseCheckTx{Code: kvstore.CodeTypeOK, GasWanted: 1}, nil
+	return &abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{Code: kvstore.CodeTypeOK, GasWanted: 1}}, nil
 }
 
 // FinalizeBlock implements ABCI.

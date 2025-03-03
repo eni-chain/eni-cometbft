@@ -781,6 +781,41 @@ type MempoolConfig struct {
 	// performance results using the default P2P configuration.
 	ExperimentalMaxGossipConnectionsToPersistentPeers    int `mapstructure:"experimental_max_gossip_connections_to_persistent_peers"`
 	ExperimentalMaxGossipConnectionsToNonPersistentPeers int `mapstructure:"experimental_max_gossip_connections_to_non_persistent_peers"`
+
+	// TTLDuration, if non-zero, defines the maximum amount of time a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLNumBlocks is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if it's
+	// insertion time into the mempool is beyond TTLDuration.
+	TTLDuration time.Duration `mapstructure:"ttl-duration"`
+
+	// TTLNumBlocks, if non-zero, defines the maximum number of blocks a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLDuration is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if
+	// it's insertion time into the mempool is beyond TTLDuration.
+	TTLNumBlocks int64 `mapstructure:"ttl-num-blocks"`
+
+	// Maximum number of transactions in the pending set
+	PendingSize int `mapstructure:"pending-size"`
+
+	// Limit the total size of all txs in the pending set.
+	MaxPendingTxsBytes int64 `mapstructure:"max-pending-txs-bytes"`
+
+	PendingTTLDuration time.Duration `mapstructure:"pending-ttl-duration"`
+
+	PendingTTLNumBlocks int64 `mapstructure:"pending-ttl-num-blocks"`
+
+	// If a peer has sent more transactions failing CheckTx than this threshold,
+	// blacklist the peer.
+	CheckTxErrorBlacklistEnabled bool `mapstructure:"check-tx-error-blacklist-enabled"`
+	CheckTxErrorThreshold        int  `mapstructure:"check-tx-error-threshold"`
+
+	// TxNotifyThreshold, if non-zero, defines the minimum number of transactions
+	// needed to trigger a notification in mempool's Tx notifier
+	TxNotifyThreshold uint64 `mapstructure:"tx-notify-threshold"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the CometBFT mempool

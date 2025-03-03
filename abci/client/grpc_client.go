@@ -194,8 +194,9 @@ func (cli *grpcClient) Info(ctx context.Context, req *types.RequestInfo) (*types
 	return cli.client.Info(ctx, req, grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	return cli.client.CheckTx(ctx, req, grpc.WaitForReady(true))
+func (cli *grpcClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTxV2, error) {
+	res, err := cli.client.CheckTx(ctx, req, grpc.WaitForReady(true))
+	return &types.ResponseCheckTxV2{ResponseCheckTx: res}, err
 }
 
 func (cli *grpcClient) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {

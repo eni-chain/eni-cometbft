@@ -177,5 +177,5 @@ func (env *Environment) CheckTx(_ *rpctypes.Context, tx types.Tx) (*ctypes.Resul
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
+	return &ctypes.ResultCheckTx{ResponseCheckTx: *res.ResponseCheckTx}, nil
 }

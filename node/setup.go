@@ -236,15 +236,16 @@ func createMempoolAndMempoolReactor(
 	// allow empty string for backward compatibility
 	case cfg.MempoolTypeFlood, "":
 		logger = logger.With("module", "mempool")
-		mp := mempl.NewCListMempool(
+		mp := mempl.NewTxMempool(
+			logger,
 			config.Mempool,
 			proxyApp.Mempool(),
-			state.LastBlockHeight,
-			mempl.WithMetrics(memplMetrics),
-			mempl.WithPreCheck(sm.TxPreCheck(state)),
-			mempl.WithPostCheck(sm.TxPostCheck(state)),
+			//state.LastBlockHeight,
+			nil,
+			mempl.WithMetricsTxMpool(memplMetrics),
+			mempl.WithPreCheckTxMpool(sm.TxPreCheck(state)),
+			mempl.WithPostCheckTxMpool(sm.TxPostCheck(state)),
 		)
-		mp.SetLogger(logger)
 		reactor := mempl.NewReactor(
 			config.Mempool,
 			mp,

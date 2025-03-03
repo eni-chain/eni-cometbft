@@ -269,7 +269,7 @@ func (cli *socketClient) Info(ctx context.Context, req *types.RequestInfo) (*typ
 	return reqRes.Response.GetInfo(), cli.Error()
 }
 
-func (cli *socketClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (cli *socketClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTxV2, error) {
 	reqRes, err := cli.queueRequest(ctx, types.ToRequestCheckTx(req))
 	if err != nil {
 		return nil, err
@@ -277,7 +277,8 @@ func (cli *socketClient) CheckTx(ctx context.Context, req *types.RequestCheckTx)
 	if err := cli.Flush(ctx); err != nil {
 		return nil, err
 	}
-	return reqRes.Response.GetCheckTx(), cli.Error()
+	res := reqRes.Response.GetCheckTx()
+	return &types.ResponseCheckTxV2{ResponseCheckTx: res}, cli.Error()
 }
 
 func (cli *socketClient) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {

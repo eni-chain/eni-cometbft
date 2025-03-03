@@ -46,6 +46,25 @@ func (e ErrMempoolIsFull) Error() string {
 	)
 }
 
+// ErrMempoolPendingIsFull defines an error where there are too many pending transactions
+// not processed yet
+type ErrMempoolPendingIsFull struct {
+	NumTxs      int
+	MaxTxs      int
+	TxsBytes    int64
+	MaxTxsBytes int64
+}
+
+func (e ErrMempoolPendingIsFull) Error() string {
+	return fmt.Sprintf(
+		"mempool pending set is full: number of txs %d (max: %d), total txs bytes %d (max: %d)",
+		e.NumTxs,
+		e.MaxTxs,
+		e.TxsBytes,
+		e.MaxTxsBytes,
+	)
+}
+
 // ErrPreCheck defines an error where a transaction fails a pre-check.
 type ErrPreCheck struct {
 	Err error

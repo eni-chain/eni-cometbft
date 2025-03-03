@@ -127,18 +127,19 @@ func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain
 // - Contains one and only one `=`
 // - `=` is not the first or last byte.
 // - if key is `val` that the validator update transaction is also valid
-func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTxV2, error) {
 	// If it is a validator update transaction, check that it is correctly formatted
 	if isValidatorTx(req.Tx) {
 		if _, _, _, err := parseValidatorTx(req.Tx); err != nil {
 			//nolint:nilerr
-			return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
+
+			return &types.ResponseCheckTxV2{ResponseCheckTx: &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}}, nil
 		}
 	} else if !isValidTx(req.Tx) {
-		return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
+		return &types.ResponseCheckTxV2{ResponseCheckTx: &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}}, nil
 	}
 
-	return &types.ResponseCheckTx{Code: CodeTypeOK, GasWanted: 1}, nil
+	return &types.ResponseCheckTxV2{ResponseCheckTx: &types.ResponseCheckTx{Code: CodeTypeOK, GasWanted: 1}}, nil
 }
 
 // Tx must have a format like key:value or key=value. That is:

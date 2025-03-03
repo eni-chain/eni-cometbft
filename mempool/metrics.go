@@ -24,6 +24,8 @@ type Metrics struct {
 	// Histogram of transaction sizes in bytes.
 	TxSizeBytes metrics.Histogram `metrics_buckettype:"exp" metrics_bucketsizes:"1,3,7"`
 
+	// Accumulated transaction sizes in bytes.
+	AllTxSizeBytes metrics.Counter
 	// FailedTxs defines the number of failed transactions. These are
 	// transactions that failed to make it into the mempool because they were
 	// deemed invalid.
@@ -48,4 +50,20 @@ type Metrics struct {
 	// Number of connections being actively used for gossiping transactions
 	// (experimental feature).
 	ActiveOutboundConnections metrics.Gauge
+
+	// added for eni
+	// Number of pending transactions in mempool
+	PendingSize metrics.Gauge
+
+	// ExpiredTxs defines the number of expired transactions. These are valid
+	// transactions that passed CheckTx and existed in the mempool but were not
+	// get picked up in time and eventually got expired and removed from mempool
+	//metrics:Number of expired transactions.
+	ExpiredTxs metrics.Counter
+
+	// Number of removed tx from mempool
+	RemovedTxs metrics.Counter
+
+	// Number of txs inserted to mempool
+	InsertedTxs metrics.Counter
 }

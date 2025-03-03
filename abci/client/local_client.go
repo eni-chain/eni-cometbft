@@ -54,7 +54,7 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req *types.RequestChec
 	}
 	return app.callback(
 		types.ToRequestCheckTx(req),
-		types.ToResponseCheckTx(res),
+		types.ToResponseCheckTx(res.ResponseCheckTx),
 	), nil
 }
 
@@ -92,7 +92,7 @@ func (app *localClient) Info(ctx context.Context, req *types.RequestInfo) (*type
 	return app.Application.Info(ctx, req)
 }
 
-func (app *localClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (app *localClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTxV2, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 

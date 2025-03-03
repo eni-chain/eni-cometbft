@@ -21,8 +21,9 @@ import (
 // peers you received it from.
 type Reactor struct {
 	p2p.BaseReactor
-	config  *cfg.MempoolConfig
-	mempool *CListMempool
+	config *cfg.MempoolConfig
+	//mempool *CListMempool
+	mempool *TxMempool
 	ids     *mempoolIDs
 
 	// Semaphores to keep track of how many connections to peers are active for broadcasting
@@ -33,7 +34,20 @@ type Reactor struct {
 }
 
 // NewReactor returns a new Reactor with the given config and mempool.
-func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
+//func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
+//	memR := &Reactor{
+//		config:  config,
+//		mempool: mempool,
+//		ids:     newMempoolIDs(),
+//	}
+//	memR.BaseReactor = *p2p.NewBaseReactor("Mempool", memR)
+//	memR.activePersistentPeersSemaphore = semaphore.NewWeighted(int64(memR.config.ExperimentalMaxGossipConnectionsToPersistentPeers))
+//	memR.activeNonPersistentPeersSemaphore = semaphore.NewWeighted(int64(memR.config.ExperimentalMaxGossipConnectionsToNonPersistentPeers))
+//
+//	return memR
+//}
+
+func NewReactor(config *cfg.MempoolConfig, mempool *TxMempool) *Reactor {
 	memR := &Reactor{
 		config:  config,
 		mempool: mempool,
@@ -184,7 +198,8 @@ type PeerState interface {
 // Send new mempool txs to peer.
 func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 	peerID := memR.ids.GetForPeer(peer)
-	var next *clist.CElement
+	//var next *clist.CElement
+	var nextGossipTx *clist.CElement
 
 	for {
 		// In case of both next.NextWaitChan() and peer.Quit() are variable at the same time
@@ -195,10 +210,15 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// This happens because the CElement we were looking at got garbage
 		// collected (removed). That is, .NextWait() returned nil. Go ahead and
 		// start from the beginning.
-		if next == nil {
+		if nextGossipTx == nil {
 			select {
-			case <-memR.mempool.TxsWaitChan(): // Wait until a tx is available
-				if next = memR.mempool.TxsFront(); next == nil {
+			//todo
+			//case <-memR.mempool.TxsWaitChan(): // Wait until a tx is available
+			//	if next = memR.mempool.TxsFront(); next == nil {
+			//		continue
+			//	}
+			case <-memR.mempool.WaitForNextTx(): // wait until a tx is available
+				if nextGossipTx = memR.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
 				}
 			case <-peer.Quit():
@@ -221,7 +241,8 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		}
 
 		// Allow for a lag of 1 block.
-		memTx := next.Value.(*mempoolTx)
+		//memTx := next.Value.(*mempoolTx)
+		memTx := nextGossipTx.Value.(*WrappedTx)
 		if peerState.GetHeight() < memTx.Height()-1 {
 			time.Sleep(PeerCatchupSleepIntervalMS * time.Millisecond)
 			continue
@@ -230,7 +251,8 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// NOTE: Transaction batching was disabled due to
 		// https://github.com/tendermint/tendermint/issues/5796
 
-		if !memTx.isSender(peerID) {
+		//if !memTx.isSender(peerID) {
+		if ok := memR.mempool.txStore.TxHasPeer(memTx.hash, peerID); !ok {
 			success := peer.Send(p2p.Envelope{
 				ChannelID: MempoolChannel,
 				Message:   &protomem.Txs{Txs: [][]byte{memTx.tx}},
@@ -242,9 +264,12 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		}
 
 		select {
-		case <-next.NextWaitChan():
+		//case <-next.NextWaitChan():
+		//	// see the start of the for loop for nil check
+		//	next = next.Next()
+		case <-nextGossipTx.NextWaitChan():
 			// see the start of the for loop for nil check
-			next = next.Next()
+			nextGossipTx = nextGossipTx.Next()
 		case <-peer.Quit():
 			return
 		case <-memR.Quit():

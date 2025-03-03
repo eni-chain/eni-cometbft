@@ -12,7 +12,7 @@ type Application interface {
 	Query(context.Context, *RequestQuery) (*ResponseQuery, error) // Query for state
 
 	// Mempool Connection
-	CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTx, error) // Validate a tx for the mempool
+	CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTxV2, error) // Validate a tx for the mempool
 
 	// Consensus Connection
 	InitChain(context.Context, *RequestInitChain) (*ResponseInitChain, error) // Initialize blockchain w validators/other info from CometBFT
@@ -49,8 +49,8 @@ func (BaseApplication) Info(context.Context, *RequestInfo) (*ResponseInfo, error
 	return &ResponseInfo{}, nil
 }
 
-func (BaseApplication) CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTx, error) {
-	return &ResponseCheckTx{Code: CodeTypeOK}, nil
+func (BaseApplication) CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTxV2, error) {
+	return &ResponseCheckTxV2{ResponseCheckTx: &ResponseCheckTx{Code: CodeTypeOK}}, nil
 }
 
 func (BaseApplication) Commit(context.Context, *RequestCommit) (*ResponseCommit, error) {
