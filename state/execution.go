@@ -680,7 +680,9 @@ func fireEvents(
 	}
 
 	if err := eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header: block.Header,
+		Header:              block.Header,
+		NumTxs:              int64(len(block.Txs)),
+		ResultFinalizeBlock: *abciResponse,
 	}); err != nil {
 		logger.Error("failed publishing new block header", "err", err)
 	}

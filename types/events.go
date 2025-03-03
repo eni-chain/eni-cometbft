@@ -70,7 +70,9 @@ type EventDataNewBlock struct {
 }
 
 type EventDataNewBlockHeader struct {
-	Header Header `json:"header"`
+	Header              Header                     `json:"header"`
+	NumTxs              int64                      `json:"num_txs,string"` // Number of txs in a block
+	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
 }
 
 type EventDataNewBlockEvents struct {
