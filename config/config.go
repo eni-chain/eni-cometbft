@@ -834,6 +834,11 @@ func DefaultMempoolConfig() *MempoolConfig {
 		MaxTxBytes:  1024 * 1024, // 1MB
 		ExperimentalMaxGossipConnectionsToNonPersistentPeers: 0,
 		ExperimentalMaxGossipConnectionsToPersistentPeers:    0,
+
+		PendingSize:         5000,
+		MaxPendingTxsBytes:  1024 * 1024 * 1024, // 1GB
+		PendingTTLDuration:  0 * time.Second,
+		PendingTTLNumBlocks: 0,
 	}
 }
 

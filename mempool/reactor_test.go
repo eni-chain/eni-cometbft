@@ -324,7 +324,7 @@ func makeAndConnectReactors(config *cfg.Config, n int) ([]*Reactor, []*p2p.Switc
 	for i := 0; i < n; i++ {
 		app := kvstore.NewInMemoryApplication()
 		cc := proxy.NewLocalClientCreator(app)
-		mempool, cleanup := newMempoolWithApp(cc)
+		mempool, cleanup := newMempoolWithAppTxMpool(cc)
 		defer cleanup()
 
 		reactors[i] = NewReactor(config.Mempool, mempool) // so we dont start the consensus states

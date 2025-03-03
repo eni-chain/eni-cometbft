@@ -310,7 +310,7 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	// This simulates the client dropping the second request.
 	// Previous versions of this code panicked when the ABCI application missed
 	// a recheck-tx request.
-	resp := &abci.ResponseCheckTx{Code: abci.CodeTypeOK}
+	resp := &abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{Code: abci.CodeTypeOK}}
 	req := &abci.RequestCheckTx{Tx: txs[1]}
 	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
 
@@ -754,7 +754,7 @@ func TestMempoolConcurrentUpdateAndReceiveCheckTxResponse(t *testing.T) {
 			defer wg.Done()
 
 			tx := kvstore.NewTxFromID(h)
-			mp.resCbFirstTime(tx, TxInfo{}, abci.ToResponseCheckTx(&abci.ResponseCheckTx{Code: abci.CodeTypeOK}))
+			mp.resCbFirstTime(tx, TxInfo{}, abci.ToResponseCheckTx(&abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{Code: abci.CodeTypeOK}}))
 			require.Equal(t, h, mp.Size(), "pool size mismatch")
 		}(h)
 
@@ -776,14 +776,14 @@ func TestMempoolNotifyTxsAvailable(t *testing.T) {
 
 	// Adding a new valid tx to the pool will notify a tx is available
 	tx := kvstore.NewTxFromID(1)
-	mp.resCbFirstTime(tx, TxInfo{}, abci.ToResponseCheckTx(&abci.ResponseCheckTx{Code: abci.CodeTypeOK}))
+	mp.resCbFirstTime(tx, TxInfo{}, abci.ToResponseCheckTx(&abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{Code: abci.CodeTypeOK}}))
 	require.Equal(t, 1, mp.Size(), "pool size mismatch")
 	require.True(t, mp.notifiedTxsAvailable.Load())
 	require.Len(t, mp.TxsAvailable(), 1)
 	<-mp.TxsAvailable()
 
 	// Receiving CheckTx response for a tx already in the pool should not notify of available txs
-	mp.resCbFirstTime(tx, TxInfo{}, abci.ToResponseCheckTx(&abci.ResponseCheckTx{Code: abci.CodeTypeOK}))
+	mp.resCbFirstTime(tx, TxInfo{}, abci.ToResponseCheckTx(&abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{Code: abci.CodeTypeOK}}))
 	require.Equal(t, 1, mp.Size())
 	require.True(t, mp.notifiedTxsAvailable.Load())
 	require.Empty(t, mp.TxsAvailable())
@@ -1023,7 +1023,7 @@ func newRemoteApp(tb testing.TB, addr string, app abci.Application) (abciclient.
 
 func newReqRes(tx types.Tx, code uint32, requestType abci.CheckTxType) *abciclient.ReqRes { //nolint: unparam
 	reqRes := abciclient.NewReqRes(abci.ToRequestCheckTx(&abci.RequestCheckTx{Tx: tx, Type: requestType}))
-	reqRes.Response = abci.ToResponseCheckTx(&abci.ResponseCheckTx{Code: code})
+	reqRes.Response = abci.ToResponseCheckTx(&abci.ResponseCheckTxV2{ResponseCheckTx: &abci.ResponseCheckTx{Code: code}})
 	return reqRes
 }
 

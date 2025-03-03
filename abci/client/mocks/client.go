@@ -50,7 +50,7 @@ func (_m *Client) ApplySnapshotChunk(_a0 context.Context, _a1 *types.RequestAppl
 }
 
 // CheckTx provides a mock function with given fields: _a0, _a1
-func (_m *Client) CheckTx(_a0 context.Context, _a1 *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (_m *Client) CheckTx(_a0 context.Context, _a1 *types.RequestCheckTx) (*types.ResponseCheckTxV2, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
@@ -60,7 +60,8 @@ func (_m *Client) CheckTx(_a0 context.Context, _a1 *types.RequestCheckTx) (*type
 	var r0 *types.ResponseCheckTx
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestCheckTx) (*types.ResponseCheckTx, error)); ok {
-		return rf(_a0, _a1)
+		res,err := rf(_a0, _a1)
+		return &types.ResponseCheckTxV2{ResponseCheckTx:res},err
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestCheckTx) *types.ResponseCheckTx); ok {
 		r0 = rf(_a0, _a1)
@@ -76,7 +77,7 @@ func (_m *Client) CheckTx(_a0 context.Context, _a1 *types.RequestCheckTx) (*type
 		r1 = ret.Error(1)
 	}
 
-	return r0, r1
+	return &types.ResponseCheckTxV2{ResponseCheckTx:r0}, r1
 }
 
 // CheckTxAsync provides a mock function with given fields: _a0, _a1
