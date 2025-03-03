@@ -67,6 +67,11 @@ type gRPCApplication struct {
 	types.Application
 }
 
+func (app *gRPCApplication) CheckTx(ctx context.Context, tx *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (app *gRPCApplication) Echo(_ context.Context, req *types.RequestEcho) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: req.Message}, nil
 }

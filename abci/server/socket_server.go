@@ -222,12 +222,12 @@ func (s *SocketServer) handleRequest(ctx context.Context, req *types.Request) (*
 			return nil, err
 		}
 		return types.ToResponseInfo(res), nil
-	case *types.Request_CheckTx:
-		res, err := s.app.CheckTx(ctx, r.CheckTx)
-		if err != nil {
-			return nil, err
-		}
-		return types.ToResponseCheckTx(res), nil
+	//case *types.Request_CheckTx:
+	//	res, err := s.app.CheckTx(ctx, r.CheckTx)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	return types.ToResponseCheckTx(res), nil
 	case *types.Request_Commit:
 		res, err := s.app.Commit(ctx, r.Commit)
 		if err != nil {
