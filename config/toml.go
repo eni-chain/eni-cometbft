@@ -2,11 +2,14 @@ package config
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
 	cmtos "github.com/cometbft/cometbft/libs/os"
+	cmrand "github.com/cometbft/cometbft/libs/rand"
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
@@ -357,8 +360,8 @@ type = "flood"
 recheck = {{ .Mempool.Recheck }}
 
 # recheck_timeout is the time the application has during the rechecking process
-# to return CheckTx responses, once all requests have been sent. Responses that 
-# arrive after the timeout expires are discarded. It only applies to 
+# to return CheckTx responses, once all requests have been sent. Responses that
+# arrive after the timeout expires are discarded. It only applies to
 # non-local ABCI clients and when recheck is enabled.
 #
 # The ideal value will strongly depend on the application. It could roughly be estimated as the
@@ -419,6 +422,10 @@ max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
 # performance results using the default P2P configuration.
 experimental_max_gossip_connections_to_persistent_peers = {{ .Mempool.ExperimentalMaxGossipConnectionsToPersistentPeers }}
 experimental_max_gossip_connections_to_non_persistent_peers = {{ .Mempool.ExperimentalMaxGossipConnectionsToNonPersistentPeers }}
+pending-size = {{ .Mempool.PendingSize }}
+
+max-pending-txs-bytes = {{ .Mempool.MaxPendingTxsBytes }}
+
 
 #######################################################
 ###         State Sync Configuration Options        ###
@@ -565,3 +572,126 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
 `
+
+/****** these are for test settings ***********/
+const defaultDirPerm = 0700
+
+func ResetTestRoot(dir, testName string) (*Config, error) {
+	return ResetTestRootWithChainID(dir, testName, "")
+}
+
+func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, error) {
+	// create a unique, concurrency-safe test directory under os.TempDir()
+	rootDir, err := os.MkdirTemp(dir, fmt.Sprintf("%s-%s_", chainID, testName))
+	if err != nil {
+		return nil, err
+	}
+	// ensure config and data subdirs are created
+	if err := cmtos.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), defaultDirPerm); err != nil {
+		return nil, err
+	}
+	if err := cmtos.EnsureDir(filepath.Join(rootDir, DefaultDataDir), defaultDirPerm); err != nil {
+		return nil, err
+	}
+
+	conf := DefaultConfig()
+	genesisFilePath := filepath.Join(rootDir, conf.Genesis)
+	privKeyFilePath := filepath.Join(rootDir, conf.PrivValidatorKey)
+	privStateFilePath := filepath.Join(rootDir, conf.PrivValidatorState)
+
+	// Write default config file if missing.
+	writeDefaultConfigFile(filepath.Join(rootDir, defaultConfigFilePath))
+
+	if !cmtos.FileExists(genesisFilePath) {
+		if chainID == "" {
+			chainID = "cometbft_test"
+		}
+		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
+		if err := writeFile(genesisFilePath, []byte(testGenesis), 0644); err != nil {
+			return nil, err
+		}
+	}
+	// we always overwrite the priv val
+	if err := writeFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644); err != nil {
+		return nil, err
+	}
+	if err := writeFile(privStateFilePath, []byte(testPrivValidatorState), 0644); err != nil {
+		return nil, err
+	}
+
+	config := TestConfig().SetRoot(rootDir)
+	config.Instrumentation.Namespace = fmt.Sprintf("%s_%s_%s", testName, chainID, cmrand.Str(16))
+	return config, nil
+}
+
+func writeFile(filePath string, contents []byte, mode os.FileMode) error {
+	if err := os.WriteFile(filePath, contents, mode); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+	return nil
+}
+
+const testGenesisFmt = `{
+  "genesis_time": "2018-10-10T08:20:13.695936996Z",
+  "chain_id": "%s",
+  "initial_height": "1",
+	"consensus_params": {
+		"block": {
+			"max_bytes": "22020096",
+			"max_gas": "-1",
+			"time_iota_ms": "10"
+		},
+		"synchrony": {
+			"message_delay": "500000000",
+			"precision": "10000000"
+		},
+		"timeout": {
+			"propose": "30000000",
+			"propose_delta": "50000",
+			"vote": "30000000",
+			"vote_delta": "50000",
+			"commit": "10000000",
+			"bypass_timeout_commit": true
+		},
+		"evidence": {
+			"max_age_num_blocks": "100000",
+			"max_age_duration": "172800000000000",
+			"max_bytes": "1048576"
+		},
+		"validator": {
+			"pub_key_types": [
+				"ed25519"
+			]
+		},
+		"version": {}
+	},
+  "validators": [
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
+      },
+      "power": "10",
+      "name": ""
+    }
+  ],
+  "app_hash": ""
+}`
+
+const testPrivValidatorKey = `{
+  "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
+  "pub_key": {
+    "type": "tendermint/PubKeyEd25519",
+    "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
+  },
+  "priv_key": {
+    "type": "tendermint/PrivKeyEd25519",
+    "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
+  }
+}`
+
+const testPrivValidatorState = `{
+  "height": "0",
+  "round": 0,
+  "step": 0
+}`

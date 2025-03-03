@@ -634,7 +634,9 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, res *abci.ResponseCheck
 			txmp.failedCheckTxCounts[txInfo.SenderP2PID]++
 			if txmp.config.CheckTxErrorBlacklistEnabled && txmp.failedCheckTxCounts[txInfo.SenderP2PID] > uint64(txmp.config.CheckTxErrorThreshold) {
 				// evict peer
-				txmp.peerManager.Errored(txInfo.SenderP2PID, errors.New("checkTx error exceeded threshold"))
+				if txmp.peerManager != nil {
+					txmp.peerManager.Errored(txInfo.SenderP2PID, errors.New("checkTx error exceeded threshold"))
+				}
 			}
 		}
 		return err

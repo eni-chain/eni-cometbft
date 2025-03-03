@@ -54,7 +54,7 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req *types.RequestChec
 	}
 	return app.callback(
 		types.ToRequestCheckTx(req),
-		types.ToResponseCheckTx(res.ResponseCheckTx),
+		types.ToResponseCheckTx(res),
 	), nil
 }
 

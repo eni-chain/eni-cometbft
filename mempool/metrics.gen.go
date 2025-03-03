@@ -77,5 +77,10 @@ func NopMetrics() *Metrics {
 		EvictedTxs:                discard.NewCounter(),
 		RecheckTimes:              discard.NewCounter(),
 		ActiveOutboundConnections: discard.NewGauge(),
+		PendingSize:    		   discard.NewGauge(),
+		ExpiredTxs:        		   discard.NewCounter(),
+		RemovedTxs: 		       discard.NewCounter(),
+		InsertedTxs:   		       discard.NewCounter(),
+		AllTxSizeBytes: 		   discard.NewCounter(),
 	}
 }
