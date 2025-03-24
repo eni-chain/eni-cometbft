@@ -34,6 +34,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 
 			Buckets: stdprometheus.ExponentialBuckets(1, 3, 7),
 		}, labels).With(labelsAndValues...),
+		AllTxSizeBytes: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "all_tx_size_bytes",
+			Help:      "FailedTxs defines the number of failed transactions. These are transactions that failed to make it into the mempool because they were deemed invalid. metrics:Number of failed transactions.",
+		}, labels).With(labelsAndValues...),
 		FailedTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -63,6 +69,30 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "active_outbound_connections",
 			Help:      "Number of connections being actively used for gossiping transactions (experimental feature).",
+		}, labels).With(labelsAndValues...),
+		PendingSize: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "pending_size",
+			Help:      "Number of pending transactions in mempool.",
+		}, labels).With(labelsAndValues...),
+		ExpiredTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "expired_txs",
+			Help:      "ExpiredTxs defines the number of expired transactions.",
+		}, labels).With(labelsAndValues...),
+		RemovedTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "removed_txs",
+			Help:      "Number of removed tx from mempool.",
+		}, labels).With(labelsAndValues...),
+		InsertedTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "inserted_txs",
+			Help:      "Number of txs inserted to mempool.",
 		}, labels).With(labelsAndValues...),
 	}
 }
