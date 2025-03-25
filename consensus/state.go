@@ -554,7 +554,7 @@ func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
 
 // enterNewRound(height, 0) at cs.StartTime.
 func (cs *State) scheduleRound0(rs *cstypes.RoundState) {
-	// cs.Logger.Info("scheduleRound0", "now", cmttime.Now(), "startTime", cs.StartTime)
+	cs.Logger.Info("scheduleRound0", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"), "startTime", cs.StartTime.Format("2006-01-02 15:04:05.000"))
 	sleepDuration := rs.StartTime.Sub(cmttime.Now())
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, cstypes.RoundStepNewHeight)
 }
@@ -836,6 +836,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			cs.handleMsg(mi)
 
 		case mi = <-cs.internalMsgQueue:
+			cs.Logger.Info("receiveRoutine internalMsgQueue WriteSync", "start now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -843,7 +844,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 					mi, err,
 				))
 			}
-
+			cs.Logger.Info("receiveRoutine internalMsgQueue WriteSync", "end now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
 			if _, ok := mi.Msg.(*VoteMessage); ok {
 				// we actually want to simulate failing during
 				// the previous WriteSync, but this isn't easy to do.
@@ -889,6 +890,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 
 	case *BlockPartMessage:
+		cs.Logger.Info("handleMsg BlockPartMessage", "now", time.Now().Format(time.StampMicro))
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(msg, peerID)
 
@@ -1051,7 +1053,7 @@ func (cs *State) handleTxsAvailable() {
 // NOTE: cs.StartTime was already set for height.
 func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
-
+	logger.Info("enterNewRound", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
 		logger.Debug(
 			"entering new round with invalid args",
@@ -1138,6 +1140,7 @@ func (cs *State) needProofBlock(height int64) bool {
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *State) enterPropose(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
+	logger.Info("enterPropose", "now", cmttime.Now().Format(time.StampMicro))
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
 		logger.Debug(
@@ -1203,6 +1206,7 @@ func (cs *State) isProposer(address []byte) bool {
 func (cs *State) defaultDecideProposal(height int64, round int32) {
 	var block *types.Block
 	var blockParts *types.PartSet
+	cs.Logger.Info("defaultDecideProposal", "now", cmttime.Now().Format(time.StampMicro))
 
 	// Decide on block
 	if cs.ValidBlock != nil {
@@ -1210,8 +1214,10 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
+		cs.Logger.Info("defaultDecideProposal createProposalBlock start", "now", cmttime.Now().Format(time.StampMicro))
 		var err error
 		block, err = cs.createProposalBlock(context.TODO())
+		cs.Logger.Info("defaultDecideProposal createProposalBlock end", "now", cmttime.Now().Format(time.StampMicro))
 		if err != nil {
 			cs.Logger.Error("unable to create proposal block", "error", err)
 			return
@@ -1219,7 +1225,11 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 			panic("Method createProposalBlock should not provide a nil block without errors")
 		}
 		cs.metrics.ProposalCreateCount.Add(1)
+
+		cs.Logger.Info("defaultDecideProposal MakePartSet start", "now", cmttime.Now().Format(time.StampMicro))
+		//blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
+		cs.Logger.Info("defaultDecideProposal MakePartSet end", "now", cmttime.Now().Format(time.StampMicro))
 		if err != nil {
 			cs.Logger.Error("unable to create proposal block part set", "error", err)
 			return
@@ -1231,21 +1241,25 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	if err := cs.wal.FlushAndSync(); err != nil {
 		cs.Logger.Error("failed flushing WAL to disk")
 	}
-
+	cs.Logger.Info("FlushAndSync", "now", cmttime.Now().Format(time.StampMicro))
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
+	cs.Logger.Info("ToProto", "now", cmttime.Now().Format(time.StampMicro))
+
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
 
+		cs.Logger.Info("SignProposal", "now", cmttime.Now().Format(time.StampMicro))
 		for i := 0; i < int(blockParts.Total()); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
+			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, "test"})
 		}
+		cs.Logger.Info("sendInternalMessage", "now", cmttime.Now().Format(time.StampMicro))
 
 		cs.Logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
 	} else if !cs.replayMode {
@@ -1303,8 +1317,9 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	}
 
 	proposerAddr := cs.privValidatorPubKey.Address()
-
+	cs.Logger.Info("createProposalBlock start", "now", cmttime.Now().Format(time.StampMicro))
 	ret, err := cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, lastExtCommit, proposerAddr)
+	cs.Logger.Info("createProposalBlock end", "now", cmttime.Now().Format(time.StampMicro))
 	if err != nil {
 		panic(err)
 	}
@@ -1317,6 +1332,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 // Otherwise vote nil.
 func (cs *State) enterPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
+	logger.Info("enterPrevote", "now", cmttime.Now().Format(time.StampMicro))
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
 		logger.Debug(
@@ -1343,6 +1359,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 
 func (cs *State) defaultDoPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
+	logger.Info("defaultDoPrevote", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
@@ -1378,6 +1395,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		Please see `PrepareProosal`-`ProcessProposal` coherence and determinism properties
 		in the ABCI++ specification.
 	*/
+	logger.Info("defaultDoPrevote ProcessProposal", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 	isAppValid, err := cs.blockExec.ProcessProposal(cs.ProposalBlock, cs.state)
 	if err != nil {
 		panic(fmt.Sprintf(
@@ -1440,6 +1458,7 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 // else, precommit nil otherwise.
 func (cs *State) enterPrecommit(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
+	logger.Info("enterPrecommit", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommit <= cs.Step) {
 		logger.Debug(
@@ -1594,6 +1613,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 // Enter: +2/3 precommits for block
 func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commit_round", commitRound)
+	logger.Info("enterCommit", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
 		logger.Debug(
@@ -1685,6 +1705,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 // Increment height and goto cstypes.RoundStepNewHeight
 func (cs *State) finalizeCommit(height int64) {
 	logger := cs.Logger.With("height", height)
+	logger.Info("finalizeCommit", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 
 	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
 		logger.Debug(
@@ -1765,7 +1786,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
-
+	logger.Info("ApplyVerifiedBlock start", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// We use apply verified block here because we have verified the block in this function already.
 	// NOTE The block.AppHash won't reflect these txs until the next block.
@@ -1787,6 +1808,7 @@ func (cs *State) finalizeCommit(height int64) {
 	cs.recordMetrics(height, block)
 
 	// NewHeightStep!
+	logger.Info("NewHeightStep", "now", cmttime.Now().Format("2006-01-02 15:04:05.000"))
 	cs.updateToState(stateCopy)
 
 	fail.Fail() // XXX
@@ -2028,6 +2050,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 }
 
 func (cs *State) handleCompleteProposal(blockHeight int64) {
+	cs.Logger.Info("handleCompleteProposal", "now", time.Now().Format(time.StampMicro))
+
 	// Update Valid* if we can.
 	prevotes := cs.Votes.Prevotes(cs.Round)
 	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
