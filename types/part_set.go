@@ -47,7 +47,11 @@ func (part *Part) ValidateBasic() error {
 		return ErrPartTooBig
 	}
 	// All parts except the last one should have the same constant size.
-	if int64(part.Index) < part.Proof.Total-1 && len(part.Bytes) != int(BlockPartSizeBytes) {
+	//if int64(part.Index) < part.Proof.Total-1 && len(part.Bytes) != int(BlockPartSizeBytes) {
+	//	return ErrPartInvalidSize
+	//}
+	// del check the same constant size
+	if int64(part.Index) < part.Proof.Total-1 {
 		return ErrPartInvalidSize
 	}
 	if int64(part.Index) != part.Proof.Index {

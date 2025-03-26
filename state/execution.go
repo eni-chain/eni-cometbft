@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	cmttime "github.com/cometbft/cometbft/types/time"
 	"time"
 
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -122,10 +123,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	if emptyMaxBytes {
 		maxReapBytes = -1
 	}
-
+	blockExec.logger.Info("ReapMaxBytesMaxGas start", "now", cmttime.Now().Format(time.StampMicro))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxReapBytes, maxGas)
 	commit := lastExtCommit.ToCommit()
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+
+	blockExec.logger.Info("CreateProposalBlock start", "now", cmttime.Now().Format(time.StampMicro))
 	rpp, err := blockExec.proxyApp.PrepareProposal(
 		ctx,
 		&abci.RequestPrepareProposal{
@@ -139,6 +142,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			ProposerAddress:    block.ProposerAddress,
 		},
 	)
+	blockExec.logger.Info("CreateProposalBlock end", "now", cmttime.Now().Format(time.StampMicro))
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
 		// enter the mempool. Hence, at this point, we can't have any non-processable
@@ -318,7 +322,13 @@ func (blockExec *BlockExecutor) applyBlock(state State, blockID types.BlockID, b
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, abciResponse, validatorUpdates)
-
+	endFTime := time.Now().UnixNano()
+	blockExec.logger.Info(
+		"finalized block execute time",
+		"height", block.Height,
+		"elapsed", float64(endTime-startTime)/1000000,
+		"function elapsed ", float64(endFTime-endTime)/1000000,
+	)
 	return state, nil
 }
 
