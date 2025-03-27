@@ -41,7 +41,10 @@ var (
 
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
-
+var (
+	startNewBlockTime   time.Time
+	startNewBlockHeight int64
+)
 var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
@@ -1153,7 +1156,8 @@ func (cs *State) enterPropose(height int64, round int32) {
 	}
 
 	logger.Debug("entering propose step", "current", log.NewLazySprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
-
+	startNewBlockTime = time.Now()
+	startNewBlockHeight = height
 	defer func() {
 		// Done enterPropose:
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)
@@ -1828,6 +1832,15 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+	if height == startNewBlockHeight {
+		spendTime := time.Since(startNewBlockTime).Milliseconds()
+		if spendTime > 0 {
+			cs.Logger.Info("TPS A Block",
+				"spend time", spendTime,
+				"height", height,
+				"TPS", 1000*block.Txs.Len()/int(spendTime))
+		}
+	}
 }
 
 func (cs *State) recordMetrics(height int64, block *types.Block) {
