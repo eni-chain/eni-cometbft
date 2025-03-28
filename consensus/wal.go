@@ -22,7 +22,7 @@ import (
 
 const (
 	// time.Time + max consensus msg size
-	maxMsgSizeBytes = maxMsgSize + 24
+	maxMsgSizeBytes = 10*maxMsgSize + 24
 
 	// how often the WAL should be sync'd during period sync'ing
 	walDefaultFlushInterval = 2 * time.Second
