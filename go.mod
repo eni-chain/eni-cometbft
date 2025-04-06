@@ -43,7 +43,6 @@ require (
 	github.com/cosmos/gogoproto v1.7.0
 	github.com/go-git/go-git/v5 v5.13.2
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220708102147-0a8a51822cae
@@ -82,6 +81,7 @@ require (
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect

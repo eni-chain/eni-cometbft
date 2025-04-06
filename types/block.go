@@ -1295,6 +1295,8 @@ type Data struct {
 	// This means that block.AppHash does not include these txs.
 	Txs Txs `json:"txs"`
 
+	Dag []int64 `json:"dag"`
+
 	// Volatile
 	hash cmtbytes.HexBytes
 }

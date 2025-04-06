@@ -139,6 +139,7 @@ message RequestPrepareProposal {
   bytes                     next_validators_hash = 7;
   // address of the public key of the validator proposing the block.
   bytes proposer_address = 8;
+  repeated int64            simple_dag          = 9;
 }
 
 message RequestProcessProposal {
@@ -191,6 +192,7 @@ message RequestFinalizeBlock {
   bytes                     next_validators_hash = 7;
   // proposer_address is the address of the public key of the original proposer of the block.
   bytes proposer_address = 8;
+  repeated int64            simple_dag          = 9;
 }
 
 //----------------------------------------
@@ -319,6 +321,7 @@ message ResponseApplySnapshotChunk {
 
 message ResponsePrepareProposal {
   repeated bytes txs = 1;
+  repeated int64 simple_dag = 2;
 }
 
 message ResponseProcessProposal {

@@ -126,7 +126,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	blockExec.logger.Info("ReapMaxBytesMaxGas start", "now", cmttime.Now().Format(time.StampMicro))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxReapBytes, maxGas)
 	commit := lastExtCommit.ToCommit()
-	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	block := state.MakeBlock(height, txs, nil, commit, evidence, proposerAddr)
 
 	blockExec.logger.Info("CreateProposalBlock start", "now", cmttime.Now().Format(time.StampMicro))
 	rpp, err := blockExec.proxyApp.PrepareProposal(
@@ -160,7 +160,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		return nil, err
 	}
 
-	return state.MakeBlock(height, txl, commit, evidence, proposerAddr), nil
+	return state.MakeBlock(height, txl, rpp.SimpleDag, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
@@ -758,6 +758,7 @@ func ExecCommitBlock(
 		DecidedLastCommit:  commitInfo,
 		Misbehavior:        block.Evidence.Evidence.ToABCI(),
 		Txs:                block.Txs.ToSliceOfBytes(),
+		SimpleDag:          block.Dag,
 	})
 	if err != nil {
 		logger.Error("error in proxyAppConn.FinalizeBlock", "err", err)

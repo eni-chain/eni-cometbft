@@ -46,7 +46,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, txs, extCommit.ToCommit(), evList)
+	block := MakeBlock(h, txs, nil, extCommit.ToCommit(), evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -99,7 +99,7 @@ func TestBlockValidateBasic(t *testing.T) {
 		tc := tc
 		i := i
 		t.Run(tc.testName, func(t *testing.T) {
-			block := MakeBlock(h, txs, commit, evList)
+			block := MakeBlock(h, txs, nil, commit, evList)
 			block.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
 			err = block.ValidateBasic()
@@ -110,7 +110,7 @@ func TestBlockValidateBasic(t *testing.T) {
 
 func TestBlockHash(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).Hash())
-	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Hash())
+	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil, nil).Hash())
 }
 
 func TestBlockMakePartSet(t *testing.T) {
@@ -118,7 +118,7 @@ func TestBlockMakePartSet(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, bps)
 
-	partSet, err := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
+	partSet, err := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil, nil).MakePartSet(1024)
 	require.NoError(t, err)
 	assert.NotNil(t, partSet)
 	assert.EqualValues(t, 1, partSet.Total())
@@ -140,7 +140,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.ToCommit(), evList).MakePartSet(512)
+	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, nil, extCommit.ToCommit(), evList).MakePartSet(512)
 	require.NoError(t, err)
 
 	assert.NotNil(t, partSet)
@@ -160,7 +160,7 @@ func TestBlockHashesTo(t *testing.T) {
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.ToCommit(), evList)
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, nil, extCommit.ToCommit(), evList)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -168,7 +168,7 @@ func TestBlockHashesTo(t *testing.T) {
 }
 
 func TestBlockSize(t *testing.T) {
-	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Size()
+	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil, nil).Size()
 	if size <= 0 {
 		t.Fatal("Size of the block is zero or negative")
 	}
@@ -179,7 +179,7 @@ func TestBlockString(t *testing.T) {
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringIndented(""))
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringShort())
 
-	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil)
+	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil, nil)
 	assert.NotEqual(t, "nil-Block", block.String())
 	assert.NotEqual(t, "nil-Block", block.StringIndented(""))
 	assert.NotEqual(t, "nil-Block", block.StringShort())
@@ -759,10 +759,10 @@ func TestBlockIDValidateBasic(t *testing.T) {
 func TestBlockProtoBuf(t *testing.T) {
 	h := cmtrand.Int63()
 	c1 := randCommit(time.Now())
-	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
+	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, nil, &Commit{Signatures: []CommitSig{}}, []Evidence{})
 	b1.ProposerAddress = cmtrand.Bytes(crypto.AddressSize)
 
-	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
+	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, nil, c1, []Evidence{})
 	b2.ProposerAddress = cmtrand.Bytes(crypto.AddressSize)
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	evi, err := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain")
@@ -770,7 +770,7 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
-	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
+	b3 := MakeBlock(h, []Tx{}, nil, c1, []Evidence{})
 	b3.ProposerAddress = cmtrand.Bytes(crypto.AddressSize)
 	testCases := []struct {
 		msg      string

@@ -2599,6 +2599,7 @@ func findBlockSizeLimit(t *testing.T, height, maxBytes int64, cs *State, partSiz
 		propBlock := cs.state.MakeBlock(
 			height,
 			[]types.Tx{[]byte("a=" + strings.Repeat("o", i-2))},
+			nil,
 			&types.Commit{},
 			nil,
 			cs.privValidatorPubKey.Address(),
