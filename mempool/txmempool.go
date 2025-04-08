@@ -467,6 +467,10 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		//	return false
 		//}
 
+		if len(txs) > 10000 {
+			return false
+		}
+
 		if maxGas > -1 && gas > maxGas {
 			return false
 		}
