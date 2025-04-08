@@ -503,3 +503,15 @@ message Snapshot {
   bytes  hash     = 4;  // Arbitrary snapshot hash, equal only if identical
   bytes  metadata = 5;  // Arbitrary application metadata
 }
+
+message ResponseDeliverTx {
+  uint32 code = 1;              // Transaction return code
+  bytes data = 2;               // Transaction data
+  string log = 3;               // Log information
+  string info = 4;              // Additional information
+  int64 gas_wanted = 5;         // Requested gas amount
+  int64 gas_used = 6;           // Used gas amount
+  repeated Event events = 7;    // List of events
+  string codespace = 8;         // Error code space
+  EvmTxInfo evm_tx_info = 9;    // EVM transaction info (optional)
+}
