@@ -29,10 +29,6 @@ type TxMempoolOption func(*TxMempool)
 type TxQueue struct {
 	mtx sync.RWMutex
 
-	// cache defines a fixed-size cache of already seen transactions as this
-	// reduces pressure on the proxyApp.
-	cache TxCache
-
 	// txStore defines the main storage of valid transactions. Indexes are built
 	// on top of this store.
 	txStore *TxStore
@@ -61,7 +57,6 @@ type TxQueue struct {
 
 func newTxQueue(cfg *config.MempoolConfig) *TxQueue {
 	queue := &TxQueue{
-		cache:         NopTxCache{},
 		txStore:       NewTxStore(),
 		gossipIndex:   clist.New(),
 		priorityIndex: NewTxPriorityQueue(),
@@ -77,7 +72,7 @@ func newTxQueue(cfg *config.MempoolConfig) *TxQueue {
 	return queue
 }
 
-func (txq *TxQueue) DelTx(txmp *TxMempool, wtx *WrappedTx, removeFromCache bool, shouldReenqueue bool, updatePriorityIndex bool) {
+func (txq *TxQueue) delTx(txmp *TxMempool, wtx *WrappedTx, removeFromCache bool, shouldReenqueue bool, updatePriorityIndex bool) {
 	if txq.txStore.IsTxRemoved(wtx) {
 		return
 	}
@@ -116,6 +111,13 @@ func (txq *TxQueue) DelTx(txmp *TxMempool, wtx *WrappedTx, removeFromCache bool,
 	//	}
 	//}
 }
+
+func (txq *TxQueue) DelTx(txmp *TxMempool, wtx *WrappedTx, removeFromCache bool, shouldReenqueue bool, updatePriorityIndex bool) {
+	txq.mtx.Lock()
+	defer txq.mtx.Unlock()
+	txq.delTx(txmp, wtx, removeFromCache, shouldReenqueue, updatePriorityIndex)
+}
+
 func (txq *TxQueue) AddTx(txmp *TxMempool, wtx *WrappedTx) bool {
 	txq.mtx.Lock()
 	defer txq.mtx.Unlock()
@@ -131,7 +133,7 @@ func (txq *TxQueue) AddTx(txmp *TxMempool, wtx *WrappedTx) bool {
 	//txmp.metrics.SizeBytes.Set(float64(txmp.TotalTxsBytesSize()))
 
 	if replacedTx != nil {
-		txq.DelTx(txmp, replacedTx, true, false, false)
+		txq.delTx(txmp, replacedTx, true, false, false)
 	}
 
 	txq.txStore.SetTx(wtx)
@@ -748,7 +750,10 @@ func (txmp *TxMempool) Update(
 
 		// remove the committed transaction from the transaction store and indexes
 		if wtx := txmp.txStore.GetTxByHash(tx.Key()); wtx != nil {
-			txmp.removeTx(wtx, false, false, true)
+			//txmp.removeTx(wtx, false, false, true)
+			queueIdx := txmp.DistQueueIdx(wtx.evmAddress)
+			txmp.TxQueues[queueIdx].DelTx(txmp, wtx, false, false, true)
+
 		}
 		if execTxResult[i].EvmTxInfo != nil {
 			// remove any tx that has the same nonce (because the committed tx
