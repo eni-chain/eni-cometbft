@@ -150,6 +150,13 @@ func (txq *TxQueue) AddTx(txmp *TxMempool, wtx *WrappedTx) bool {
 	return true
 }
 
+func (txq *TxQueue) ForEachTx(handler func(wtx *WrappedTx) bool) {
+	txq.mtx.RLock()
+	defer txq.mtx.RUnlock()
+
+	txq.priorityIndex.ForEachTx(handler)
+}
+
 // TxMempool defines a prioritized mempool data structure used by the v1 mempool
 // reactor. It keeps a thread-safe priority queue of transactions that is used
 // when a block proposer constructs a block and a thread-safe linked-list that
@@ -607,29 +614,69 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		// do not reap anything if threshold is not met
 		return txs
 	}
-	txmp.priorityIndex.ForEachTx(func(wtx *WrappedTx) bool {
-		size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
+	//txmp.priorityIndex.ForEachTx(func(wtx *WrappedTx) bool {
+	//	size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
 
-		if maxBytes > -1 && totalSize+size > maxBytes {
-			return false
-		}
-		totalSize += size
-		gas := totalGas + wtx.gasWanted
-		//if nonzeroGasTxCnt >= minTxsInBlock && maxGas > -1 && gas > maxGas {
-		//	return false
-		//}
+	//	if maxBytes > -1 && totalSize+size > maxBytes {
+	//		return false
+	//	}
+	//	totalSize += size
+	//	gas := totalGas + wtx.gasWanted
+	//	//if nonzeroGasTxCnt >= minTxsInBlock && maxGas > -1 && gas > maxGas {
+	//	//	return false
+	//	//}
 
-		if maxGas > -1 && gas > maxGas {
-			return false
-		}
-		totalGas = gas
+	//	if maxGas > -1 && gas > maxGas {
+	//		return false
+	//	}
+	//	totalGas = gas
 
-		txs = append(txs, wtx.tx)
-		if wtx.gasWanted > 0 {
-			nonzeroGasTxCnt++
+	//	txs = append(txs, wtx.tx)
+	//	if wtx.gasWanted > 0 {
+	//		nonzeroGasTxCnt++
+	//	}
+	//	return true
+	//})
+
+	txsTable := make([][]types.Tx, len(txmp.TxQueues))
+	var wg sync.WaitGroup
+	for i := 0; i < len(txmp.TxQueues); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			txmp.TxQueues[i].ForEachTx(func(wtx *WrappedTx) bool {
+				size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
+
+				if maxBytes > -1 && totalSize+size > maxBytes {
+					return false
+				}
+				totalSize += size
+				gas := totalGas + wtx.gasWanted
+				//if nonzeroGasTxCnt >= minTxsInBlock && maxGas > -1 && gas > maxGas {
+				//	return false
+				//}
+
+				if maxGas > -1 && gas > maxGas {
+					return false
+				}
+				totalGas = gas
+
+				//txs = append(txs, wtx.tx)
+				txsTable[i] = append(txsTable[i], wtx.tx)
+				if wtx.gasWanted > 0 {
+					nonzeroGasTxCnt++
+				}
+				return true
+			})
+		}()
+	}
+	wg.Wait()
+
+	for i := 0; i < len(txmp.TxQueues); i++ {
+		if len(txsTable[i]) > 0 {
+			txs = append(txs, txsTable[i]...)
 		}
-		return true
-	})
+	}
 
 	return txs
 }
