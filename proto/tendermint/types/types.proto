@@ -76,6 +76,7 @@ message Data {
   // NOTE: not all txs here are valid.  We're just agreeing on the order first.
   // This means that block.AppHash does not include these txs.
   repeated bytes txs = 1;
+  repeated int64  dag = 2;
 }
 
 // Vote represents a prevote or precommit vote from validators for

@@ -1342,6 +1342,7 @@ func (data *Data) ToProto() cmtproto.Data {
 			txBzs[i] = data.Txs[i]
 		}
 		tp.Txs = txBzs
+		tp.Dag = data.Dag
 	}
 
 	return *tp
