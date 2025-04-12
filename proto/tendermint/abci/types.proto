@@ -170,6 +170,7 @@ message RequestExtendVote {
   bytes                     next_validators_hash = 7;
   // address of the public key of the original proposer of the block.
   bytes proposer_address = 8;
+  repeated int64            simple_dag          = 9;
 }
 
 // Verify the vote extension
