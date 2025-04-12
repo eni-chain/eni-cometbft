@@ -1362,6 +1362,7 @@ func DataFromProto(dp *cmtproto.Data) (Data, error) {
 			txBzs[i] = Tx(dp.Txs[i])
 		}
 		data.Txs = txBzs
+		data.Dag = dp.Dag
 	} else {
 		data.Txs = Txs{}
 	}
