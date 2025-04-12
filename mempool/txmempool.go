@@ -762,11 +762,14 @@ func (txmp *TxMempool) Update(
 				evmAddress: execTxResult[i].EvmTxInfo.SenderAddress,
 				evmNonce:   execTxResult[i].EvmTxInfo.Nonce,
 			}); wtx != nil {
-				txmp.removeTx(wtx, false, false, true)
+				//txmp.removeTx(wtx, false, false, true)
+				queueIdx := txmp.DistQueueIdx(wtx.evmAddress)
+				txmp.TxQueues[queueIdx].DelTx(txmp, wtx, false, false, true)
 			}
 		}
 	}
 
+	//todo: recontract the two function
 	txmp.purgeExpiredTxs(blockHeight)
 	txmp.handlePendingTransactions()
 
@@ -780,7 +783,7 @@ func (txmp *TxMempool) Update(
 				"num_txs", txmp.Size(),
 				"height", blockHeight,
 			)
-			txmp.updateReCheckTxs(context.TODO())
+			//txmp.updateReCheckTxs(context.TODO())
 		} else {
 			txmp.notifyTxsAvailable()
 		}
@@ -1214,51 +1217,60 @@ func (txmp *TxMempool) logExpiredTx(blockHeight int64, wtx *WrappedTx) {
 // the height and time based indexes.
 func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 	now := time.Now()
-	expiredTxs := make(map[types.TxKey]*WrappedTx)
 
-	if txmp.config.TTLNumBlocks > 0 {
-		purgeIdx := -1
-		for i, wtx := range txmp.heightIndex.txs {
-			if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
-				expiredTxs[wtx.tx.Key()] = wtx
-				purgeIdx = i
-			} else {
-				// since the index is sorted, we know no other txs can be be purged
-				break
+	var wg sync.WaitGroup
+	for _, queue := range txmp.TxQueues {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			expiredTxs := make(map[types.TxKey]*WrappedTx)
+			if txmp.config.TTLNumBlocks > 0 {
+				purgeIdx := -1
+				for i, wtx := range queue.heightIndex.txs {
+					if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
+						expiredTxs[wtx.tx.Key()] = wtx
+						purgeIdx = i
+					} else {
+						// since the index is sorted, we know no other txs can be be purged
+						break
+					}
+				}
+
+				if purgeIdx >= 0 {
+					queue.heightIndex.txs = queue.heightIndex.txs[purgeIdx+1:]
+				}
 			}
-		}
 
-		if purgeIdx >= 0 {
-			txmp.heightIndex.txs = txmp.heightIndex.txs[purgeIdx+1:]
-		}
-	}
+			if txmp.config.TTLDuration > 0 {
+				purgeIdx := -1
+				for i, wtx := range queue.timestampIndex.txs {
+					if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
+						expiredTxs[wtx.tx.Key()] = wtx
+						purgeIdx = i
+					} else {
+						// since the index is sorted, we know no other txs can be be purged
+						break
+					}
+				}
 
-	if txmp.config.TTLDuration > 0 {
-		purgeIdx := -1
-		for i, wtx := range txmp.timestampIndex.txs {
-			if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
-				expiredTxs[wtx.tx.Key()] = wtx
-				purgeIdx = i
-			} else {
-				// since the index is sorted, we know no other txs can be be purged
-				break
+				if purgeIdx >= 0 {
+					queue.timestampIndex.txs = queue.timestampIndex.txs[purgeIdx+1:]
+				}
 			}
-		}
 
-		if purgeIdx >= 0 {
-			txmp.timestampIndex.txs = txmp.timestampIndex.txs[purgeIdx+1:]
-		}
+			//todo: shard txmp.txCache and remove expired tx from txCache
+			for _, wtx := range expiredTxs {
+				txmp.expire(blockHeight, wtx)
+			}
+
+			// remove pending txs that have expired
+			queue.pendingTxs.PurgeExpired(blockHeight, now, func(wtx *WrappedTx) {
+				atomic.AddInt64(&txmp.pendingSizeBytes, int64(-wtx.Size()))
+				txmp.expire(blockHeight, wtx)
+			})
+		}()
 	}
-
-	for _, wtx := range expiredTxs {
-		txmp.expire(blockHeight, wtx)
-	}
-
-	// remove pending txs that have expired
-	txmp.pendingTxs.PurgeExpired(blockHeight, now, func(wtx *WrappedTx) {
-		atomic.AddInt64(&txmp.pendingSizeBytes, int64(-wtx.Size()))
-		txmp.expire(blockHeight, wtx)
-	})
+	wg.Wait()
 }
 
 func (txmp *TxMempool) notifyTxsAvailable() {
@@ -1298,17 +1310,27 @@ func (txmp *TxMempool) AppendCheckTxErr(existingLogs string, log string) string 
 }
 
 func (txmp *TxMempool) handlePendingTransactions() {
-	accepted, rejected := txmp.pendingTxs.EvaluatePendingTransactions()
-	for _, tx := range accepted {
-		atomic.AddInt64(&txmp.pendingSizeBytes, int64(-tx.tx.Size()))
-		if err := txmp.addNewTransaction(tx.tx, tx.checkTxResponse.ResponseCheckTx, tx.txInfo); err != nil {
-			txmp.logger.Error(fmt.Sprintf("error adding pending transaction: %s", err))
-		}
+	var wg sync.WaitGroup
+	for _, queue := range txmp.TxQueues {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			accepted, rejected := queue.pendingTxs.EvaluatePendingTransactions()
+			for _, tx := range accepted {
+				atomic.AddInt64(&txmp.pendingSizeBytes, int64(-tx.tx.Size()))
+				//queue.AddTx(txmp, tx.tx)
+				if err := txmp.addNewTransaction(tx.tx, tx.checkTxResponse.ResponseCheckTx, tx.txInfo); err != nil {
+					txmp.logger.Error(fmt.Sprintf("error adding pending transaction: %s", err))
+				}
+			}
+			for _, tx := range rejected {
+				atomic.AddInt64(&txmp.pendingSizeBytes, int64(-tx.tx.Size()))
+				if !txmp.config.KeepInvalidTxsInCache {
+					tx.tx.removeHandler(true)
+				}
+			}
+		}()
 	}
-	for _, tx := range rejected {
-		atomic.AddInt64(&txmp.pendingSizeBytes, int64(-tx.tx.Size()))
-		if !txmp.config.KeepInvalidTxsInCache {
-			tx.tx.removeHandler(true)
-		}
-	}
+
+	wg.Wait()
 }
