@@ -163,7 +163,7 @@ func isValidTx(tx []byte) bool {
 // quite a trivial example of transaction modification.
 // NOTE: we assume that CometBFT will never provide more transactions than can fit in a block.
 func (app *Application) PrepareProposal(ctx context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	return &types.ResponsePrepareProposal{Txs: app.formatTxs(ctx, req.Txs)}, nil
+	return &types.ResponsePrepareProposal{Txs: app.formatTxs(ctx, req.Txs), SimpleDag: req.SimpleDag}, nil
 }
 
 // formatTxs validates and excludes invalid transactions

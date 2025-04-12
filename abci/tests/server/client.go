@@ -42,7 +42,7 @@ func Commit(ctx context.Context, client abcicli.Client) error {
 }
 
 func FinalizeBlock(ctx context.Context, client abcicli.Client, txBytes [][]byte, codeExp []uint32, dataExp []byte, hashExp []byte) error {
-	res, _ := client.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: txBytes})
+	res, _ := client.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: txBytes, SimpleDag: nil})
 	appHash := res.AppHash
 	for i, tx := range res.TxResults {
 		code, data, log := tx.Code, tx.Data, tx.Log
@@ -83,7 +83,7 @@ func PrepareProposal(ctx context.Context, client abcicli.Client, txBytes [][]byt
 }
 
 func ProcessProposal(ctx context.Context, client abcicli.Client, txBytes [][]byte, statusExp types.ResponseProcessProposal_ProposalStatus) error {
-	res, _ := client.ProcessProposal(ctx, &types.RequestProcessProposal{Txs: txBytes})
+	res, _ := client.ProcessProposal(ctx, &types.RequestProcessProposal{Txs: txBytes, SimpleDag: nil})
 	if res.Status != statusExp {
 		fmt.Println("Failed test: ProcessProposal")
 		fmt.Printf("ProcessProposal response status was unexpected. Got %v expected %v.",

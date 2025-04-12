@@ -545,7 +545,10 @@ func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 		}
 		txs[i] = txBytes
 	}
-	res, err := client.FinalizeBlock(cmd.Context(), &types.RequestFinalizeBlock{Txs: txs})
+	res, err := client.FinalizeBlock(cmd.Context(), &types.RequestFinalizeBlock{
+		Txs:       txs,
+		SimpleDag: nil, // TODO: implement simple DAG
+	})
 	if err != nil {
 		return err
 	}
@@ -654,6 +657,7 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 		Txs: txsBytesArray,
 		// kvstore has to have this parameter in order not to reject a tx as the default value is 0
 		MaxTxBytes: 65536,
+		SimpleDag:  nil, // TODO: implement simple DAG
 	})
 	if err != nil {
 		return err
@@ -682,7 +686,8 @@ func cmdProcessProposal(cmd *cobra.Command, args []string) error {
 	}
 
 	res, err := client.ProcessProposal(cmd.Context(), &types.RequestProcessProposal{
-		Txs: txsBytesArray,
+		Txs:       txsBytesArray,
+		SimpleDag: nil, // TODO: implement simple DAG
 	})
 	if err != nil {
 		return err

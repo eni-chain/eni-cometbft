@@ -140,6 +140,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			Time:               block.Time,
 			NextValidatorsHash: block.NextValidatorsHash,
 			ProposerAddress:    block.ProposerAddress,
+			SimpleDag:          block.Dag,
 		},
 	)
 	blockExec.logger.Info("CreateProposalBlock end", "now", cmttime.Now().Format(time.StampMicro))
@@ -176,6 +177,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		Misbehavior:        block.Evidence.Evidence.ToABCI(),
 		ProposerAddress:    block.ProposerAddress,
 		NextValidatorsHash: block.NextValidatorsHash,
+		SimpleDag:          block.Dag,
 	})
 	if err != nil {
 		return false, err
@@ -234,6 +236,7 @@ func (blockExec *BlockExecutor) applyBlock(state State, blockID types.BlockID, b
 		DecidedLastCommit:  buildLastCommitInfoFromStore(block, blockExec.store, state.InitialHeight),
 		Misbehavior:        block.Evidence.Evidence.ToABCI(),
 		Txs:                block.Txs.ToSliceOfBytes(),
+		SimpleDag:          block.Dag,
 	})
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
@@ -354,6 +357,7 @@ func (blockExec *BlockExecutor) ExtendVote(
 		Misbehavior:        block.Evidence.Evidence.ToABCI(),
 		NextValidatorsHash: block.NextValidatorsHash,
 		ProposerAddress:    block.ProposerAddress,
+		SimpleDag:          block.Dag,
 	}
 
 	resp, err := blockExec.proxyApp.ExtendVote(ctx, &req)

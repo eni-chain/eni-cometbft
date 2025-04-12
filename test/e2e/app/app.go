@@ -437,7 +437,7 @@ func (app *Application) PrepareProposal(
 		time.Sleep(app.cfg.PrepareProposalDelay)
 	}
 
-	return &abci.ResponsePrepareProposal{Txs: txs}, nil
+	return &abci.ResponsePrepareProposal{Txs: txs, SimpleDag: req.SimpleDag}, nil
 }
 
 // ProcessProposal implements part of the Application interface.

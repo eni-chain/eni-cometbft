@@ -91,7 +91,7 @@ func (BaseApplication) PrepareProposal(_ context.Context, req *RequestPreparePro
 		}
 		txs = append(txs, tx)
 	}
-	return &ResponsePrepareProposal{Txs: txs}, nil
+	return &ResponsePrepareProposal{Txs: txs, SimpleDag: req.SimpleDag}, nil
 }
 
 func (BaseApplication) ProcessProposal(context.Context, *RequestProcessProposal) (*ResponseProcessProposal, error) {
