@@ -203,22 +203,6 @@ type TxMempool struct {
 	recheckCursor *clist.CElement // next expected response
 	recheckEnd    *clist.CElement // re-checking stops here
 
-	// priorityIndex defines the priority index of valid transactions via a
-	// thread-safe priority queue.
-	priorityIndex *TxPriorityQueue
-
-	// heightIndex defines a height-based, in ascending order, transaction index.
-	// i.e. older transactions are first.
-	heightIndex *WrappedTxList
-
-	// timestampIndex defines a timestamp-based, in ascending order, transaction
-	// index. i.e. older transactions are first.
-	timestampIndex *WrappedTxList
-
-	// pendingTxs stores transactions that are not valid yet but might become valid
-	// if its checker returns Accepted
-	pendingTxs *PendingTxs
-
 	// A read/write lock is used to safe guard updates, insertions and deletions
 	// from the mempool. A read-lock is implicitly acquired when executing CheckTx,
 	// however, a caller must explicitly grab a write-lock via Lock when updating
@@ -247,23 +231,15 @@ func NewTxMempool(
 ) *TxMempool {
 	numCPU := runtime.NumCPU()
 	txmp := &TxMempool{
-		logger:        logger,
-		config:        cfg,
-		proxyAppConn:  proxyAppConn,
-		height:        -1,
-		TxQueues:      make([]*TxQueue, numCPU*2),
-		cache:         NopTxCache{},
-		metrics:       NopMetrics(),
-		txStore:       NewTxStore(),
-		gossipIndex:   clist.New(),
-		priorityIndex: NewTxPriorityQueue(),
-		heightIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
-			return wtx1.height >= wtx2.height
-		}),
-		timestampIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
-			return wtx1.timestamp.After(wtx2.timestamp) || wtx1.timestamp.Equal(wtx2.timestamp)
-		}),
-		pendingTxs:          NewPendingTxs(cfg),
+		logger:              logger,
+		config:              cfg,
+		proxyAppConn:        proxyAppConn,
+		height:              -1,
+		TxQueues:            make([]*TxQueue, numCPU*2),
+		cache:               NopTxCache{},
+		metrics:             NopMetrics(),
+		txStore:             NewTxStore(),
+		gossipIndex:         clist.New(),
 		failedCheckTxCounts: map[p2p.ID]uint64{},
 		peerManager:         peerManager,
 	}
@@ -514,7 +490,8 @@ func (txmp *TxMempool) CheckTx(
 				return err
 			}
 			atomic.AddInt64(&txmp.pendingSizeBytes, int64(wtx.Size()))
-			if err := txmp.pendingTxs.Insert(wtx, res, txInfo); err != nil {
+			queueIdex := txmp.DistQueueIdx(wtx.evmAddress)
+			if err := txmp.TxQueues[queueIdex].pendingTxs.Insert(wtx, res, txInfo); err != nil {
 				return err
 			}
 		}
@@ -570,18 +547,18 @@ func (txmp *TxMempool) GetTxsForKeys(txKeys []types.TxKey) types.Txs {
 // NOTE:
 // - Flushing the mempool may leave the mempool in an inconsistent state.
 func (txmp *TxMempool) Flush() {
-	txmp.mtx.RLock()
-	defer txmp.mtx.RUnlock()
+	//txmp.mtx.RLock()
+	//defer txmp.mtx.RUnlock()
 
-	txmp.heightIndex.Reset()
-	txmp.timestampIndex.Reset()
+	//txmp.heightIndex.Reset()
+	//txmp.timestampIndex.Reset()
 
-	for _, wtx := range txmp.txStore.GetAllTxs() {
-		txmp.removeTx(wtx, false, false, true)
-	}
+	//for _, wtx := range txmp.txStore.GetAllTxs() {
+	//	txmp.removeTx(wtx, false, false, true)
+	//}
 
-	atomic.SwapInt64(&txmp.sizeBytes, 0)
-	txmp.cache.Reset()
+	//atomic.SwapInt64(&txmp.sizeBytes, 0)
+	//txmp.cache.Reset()
 }
 
 // ReapMaxBytesMaxGas returns a list of transactions within the provided size
@@ -679,21 +656,22 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 //   - Transactions returned are not removed from the mempool transaction
 //     store or indexes.
 func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
-	txmp.mtx.Lock()
-	defer txmp.mtx.Unlock()
+	//txmp.mtx.Lock()
+	//defer txmp.mtx.Unlock()
 
-	wTxs := txmp.priorityIndex.PeekTxs(max)
-	txs := make([]types.Tx, 0, len(wTxs))
-	for _, wtx := range wTxs {
-		txs = append(txs, wtx.tx)
-	}
-	if len(txs) < max {
-		// retrieve more from pending txs
-		pending := txmp.pendingTxs.Peek(max - len(txs))
-		for _, ptx := range pending {
-			txs = append(txs, ptx.tx.tx)
-		}
-	}
+	//wTxs := txmp.priorityIndex.PeekTxs(max)
+	//txs := make([]types.Tx, 0, len(wTxs))
+	//for _, wtx := range wTxs {
+	//	txs = append(txs, wtx.tx)
+	//}
+	//if len(txs) < max {
+	//	// retrieve more from pending txs
+	//	pending := txmp.pendingTxs.Peek(max - len(txs))
+	//	for _, ptx := range pending {
+	//		txs = append(txs, ptx.tx.tx)
+	//	}
+	//}
+	txs := make([]types.Tx, 1)
 	return txs
 }
 
@@ -747,12 +725,12 @@ func (txmp *TxMempool) Update(
 		if execTxResult[i].EvmTxInfo != nil {
 			// remove any tx that has the same nonce (because the committed tx
 			// may be from block proposal and is never in the local mempool)
-			if wtx, _ := txmp.priorityIndex.GetTxWithSameNonce(&WrappedTx{
+			queueIdx := txmp.DistQueueIdx(execTxResult[i].EvmTxInfo.SenderAddress)
+			if wtx, _ := txmp.TxQueues[queueIdx].priorityIndex.GetTxWithSameNonce(&WrappedTx{
 				evmAddress: execTxResult[i].EvmTxInfo.SenderAddress,
 				evmNonce:   execTxResult[i].EvmTxInfo.Nonce,
 			}); wtx != nil {
 				//txmp.removeTx(wtx, false, false, true)
-				queueIdx := txmp.DistQueueIdx(wtx.evmAddress)
 				txmp.TxQueues[queueIdx].DelTx(txmp, wtx, false, false, true)
 			}
 		}
@@ -1105,70 +1083,70 @@ func (txmp *TxMempool) canAddPendingTx(wtx *WrappedTx) error {
 }
 
 func (txmp *TxMempool) insertTx(wtx *WrappedTx) bool {
-	replacedTx, inserted := txmp.priorityIndex.PushTx(wtx)
-	if !inserted {
-		return false
-	}
-	txmp.metrics.AllTxSizeBytes.Add(float64(wtx.Size()))
-	txmp.metrics.Size.Set(float64(txmp.NumTxsNotPending()))
-	txmp.metrics.PendingSize.Set(float64(txmp.PendingSize()))
-	txmp.metrics.SizeBytes.Set(float64(txmp.TotalTxsBytesSize()))
+	//replacedTx, inserted := txmp.priorityIndex.PushTx(wtx)
+	//if !inserted {
+	//	return false
+	//}
+	//txmp.metrics.AllTxSizeBytes.Add(float64(wtx.Size()))
+	//txmp.metrics.Size.Set(float64(txmp.NumTxsNotPending()))
+	//txmp.metrics.PendingSize.Set(float64(txmp.PendingSize()))
+	//txmp.metrics.SizeBytes.Set(float64(txmp.TotalTxsBytesSize()))
 
-	if replacedTx != nil {
-		txmp.removeTx(replacedTx, true, false, false)
-	}
+	//if replacedTx != nil {
+	//	txmp.removeTx(replacedTx, true, false, false)
+	//}
 
-	txmp.txStore.SetTx(wtx)
-	txmp.heightIndex.Insert(wtx)
-	txmp.timestampIndex.Insert(wtx)
+	//txmp.txStore.SetTx(wtx)
+	//txmp.heightIndex.Insert(wtx)
+	//txmp.timestampIndex.Insert(wtx)
 
-	// Insert the transaction into the gossip index and mark the reference to the
-	// linked-list element, which will be needed at a later point when the
-	// transaction is removed.
-	gossipEl := txmp.gossipIndex.PushBack(wtx)
-	wtx.gossipEl = gossipEl
+	//// Insert the transaction into the gossip index and mark the reference to the
+	//// linked-list element, which will be needed at a later point when the
+	//// transaction is removed.
+	//gossipEl := txmp.gossipIndex.PushBack(wtx)
+	//wtx.gossipEl = gossipEl
 
-	txmp.metrics.InsertedTxs.Add(1)
-	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
+	//txmp.metrics.InsertedTxs.Add(1)
+	//atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
 	return true
 }
 
 func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool, shouldReenqueue bool, updatePriorityIndex bool) {
-	if txmp.txStore.IsTxRemoved(wtx) {
-		return
-	}
+	//if txmp.txStore.IsTxRemoved(wtx) {
+	//	return
+	//}
 
-	txmp.txStore.RemoveTx(wtx)
-	toBeReenqueued := []*WrappedTx{}
-	if updatePriorityIndex {
-		toBeReenqueued = txmp.priorityIndex.RemoveTx(wtx, shouldReenqueue)
-	}
-	txmp.heightIndex.Remove(wtx)
-	txmp.timestampIndex.Remove(wtx)
+	//txmp.txStore.RemoveTx(wtx)
+	//toBeReenqueued := []*WrappedTx{}
+	//if updatePriorityIndex {
+	//	toBeReenqueued = txmp.priorityIndex.RemoveTx(wtx, shouldReenqueue)
+	//}
+	//txmp.heightIndex.Remove(wtx)
+	//txmp.timestampIndex.Remove(wtx)
 
-	// Remove the transaction from the gossip index and cleanup the linked-list
-	// element so it can be garbage collected.
-	txmp.gossipIndex.Remove(wtx.gossipEl)
-	wtx.gossipEl.DetachPrev()
+	//// Remove the transaction from the gossip index and cleanup the linked-list
+	//// element so it can be garbage collected.
+	//txmp.gossipIndex.Remove(wtx.gossipEl)
+	//wtx.gossipEl.DetachPrev()
 
-	txmp.metrics.RemovedTxs.Add(1)
-	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
+	//txmp.metrics.RemovedTxs.Add(1)
+	//atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
 
-	wtx.removeHandler(removeFromCache)
+	//wtx.removeHandler(removeFromCache)
 
-	if shouldReenqueue {
-		for _, reenqueue := range toBeReenqueued {
-			txmp.removeTx(reenqueue, removeFromCache, false, true)
-		}
-		for _, reenqueue := range toBeReenqueued {
-			rtx := reenqueue.tx
-			go func() {
-				if err := txmp.CheckTx(rtx, nil, TxInfo{}); err != nil {
-					txmp.logger.Error(fmt.Sprintf("failed to reenqueue transaction %X due to %s", rtx.Hash(), err))
-				}
-			}()
-		}
-	}
+	//if shouldReenqueue {
+	//	for _, reenqueue := range toBeReenqueued {
+	//		txmp.removeTx(reenqueue, removeFromCache, false, true)
+	//	}
+	//	for _, reenqueue := range toBeReenqueued {
+	//		rtx := reenqueue.tx
+	//		go func() {
+	//			if err := txmp.CheckTx(rtx, nil, TxInfo{}); err != nil {
+	//				txmp.logger.Error(fmt.Sprintf("failed to reenqueue transaction %X due to %s", rtx.Hash(), err))
+	//			}
+	//		}()
+	//	}
+	//}
 }
 
 func (txmp *TxMempool) expire(blockHeight int64, wtx *WrappedTx) {
