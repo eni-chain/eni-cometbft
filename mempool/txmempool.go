@@ -29,15 +29,6 @@ type TxMempoolOption func(*TxMempool)
 type TxQueue struct {
 	mtx sync.RWMutex
 
-	// txStore defines the main storage of valid transactions. Indexes are built
-	// on top of this store.
-	txStore *TxStore
-
-	// gossipIndex defines the gossiping index of valid transactions via a
-	// thread-safe linked-list. We also use the gossip index as a cursor for
-	// rechecking transactions already in the mempool.
-	gossipIndex *clist.CList
-
 	// priorityIndex defines the priority index of valid transactions via a
 	// thread-safe priority queue.
 	priorityIndex *TxPriorityQueue
@@ -57,8 +48,6 @@ type TxQueue struct {
 
 func newTxQueue(cfg *config.MempoolConfig) *TxQueue {
 	queue := &TxQueue{
-		txStore:       NewTxStore(),
-		gossipIndex:   clist.New(),
 		priorityIndex: NewTxPriorityQueue(),
 		heightIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
 			return wtx1.height >= wtx2.height
@@ -73,11 +62,11 @@ func newTxQueue(cfg *config.MempoolConfig) *TxQueue {
 }
 
 func (txq *TxQueue) delTx(txmp *TxMempool, wtx *WrappedTx, removeFromCache bool, shouldReenqueue bool, updatePriorityIndex bool) {
-	if txq.txStore.IsTxRemoved(wtx) {
+	if txmp.txStore.IsTxRemoved(wtx) {
 		return
 	}
 
-	txq.txStore.RemoveTx(wtx)
+	txmp.txStore.RemoveTx(wtx)
 	//toBeReenqueued := []*WrappedTx{}
 	if updatePriorityIndex {
 		//toBeReenqueued = txq.priorityIndex.RemoveTx(wtx, shouldReenqueue)
@@ -88,7 +77,7 @@ func (txq *TxQueue) delTx(txmp *TxMempool, wtx *WrappedTx, removeFromCache bool,
 
 	// Remove the transaction from the gossip index and cleanup the linked-list
 	// element so it can be garbage collected.
-	txq.gossipIndex.Remove(wtx.gossipEl)
+	txmp.gossipIndex.Remove(wtx.gossipEl)
 	wtx.gossipEl.DetachPrev()
 
 	//txmp.metrics.RemovedTxs.Add(1)
@@ -136,14 +125,14 @@ func (txq *TxQueue) AddTx(txmp *TxMempool, wtx *WrappedTx) bool {
 		txq.delTx(txmp, replacedTx, true, false, false)
 	}
 
-	txq.txStore.SetTx(wtx)
+	txmp.txStore.SetTx(wtx)
 	txq.heightIndex.Insert(wtx)
 	txq.timestampIndex.Insert(wtx)
 
 	// Insert the transaction into the gossip index and mark the reference to the
 	// linked-list element, which will be needed at a later point when the
 	// transaction is removed.
-	gossipEl := txq.gossipIndex.PushBack(wtx)
+	gossipEl := txmp.gossipIndex.PushBack(wtx)
 	wtx.gossipEl = gossipEl
 
 	//txmp.metrics.InsertedTxs.Add(1)
