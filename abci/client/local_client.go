@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	types "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/service"
 	cmtsync "github.com/cometbft/cometbft/libs/sync"
 )
@@ -95,8 +95,8 @@ func (app *localClient) Info(ctx context.Context, req *types.RequestInfo) (*type
 
 func (app *localClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTxV2, error) {
 	//app.Logger.Info("localClient CheckTx start", "now time", time.Now().Format(time.StampMicro))
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	//app.mtx.Lock()
+	//defer app.mtx.Unlock()
 	//defer app.Logger.Info("localClient CheckTx end", "now time", time.Now().Format(time.StampMicro))
 
 	return app.Application.CheckTx(ctx, req)

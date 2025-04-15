@@ -3,6 +3,8 @@ package mempool
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/cometbft/cometbft/libs/clist"
+	"github.com/cometbft/cometbft/libs/log"
 	"math"
 
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -99,6 +101,14 @@ type Mempool interface {
 
 	// SizeBytes returns the total size of all txs in the mempool.
 	SizeBytes() int64
+
+	TxStore() *TxStore
+
+	WaitForNextTx() <-chan struct{}
+
+	NextGossipTx() *clist.CElement
+
+	SetLogger(l log.Logger)
 }
 
 // PreCheckFunc is an optional filter executed before CheckTx and rejects

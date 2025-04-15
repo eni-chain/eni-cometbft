@@ -232,20 +232,35 @@ func createMempoolAndMempoolReactor(
 	memplMetrics *mempl.Metrics,
 	logger log.Logger,
 ) (mempl.Mempool, p2p.Reactor) {
+	fastFlag := true
 	switch config.Mempool.Type {
 	// allow empty string for backward compatibility
 	case cfg.MempoolTypeFlood, "":
 		logger = logger.With("module", "mempool")
-		mp := mempl.NewTxMempool(
-			logger,
-			config.Mempool,
-			proxyApp.Mempool(),
-			//state.LastBlockHeight,
-			nil,
-			mempl.WithMetricsTxMpool(memplMetrics),
-			mempl.WithPreCheckTxMpool(sm.TxPreCheck(state)),
-			mempl.WithPostCheckTxMpool(sm.TxPostCheck(state)),
-		)
+		var mp mempl.Mempool
+		if fastFlag {
+			mp = mempl.NewFastTxMempool(
+				logger,
+				config.Mempool,
+				proxyApp.Mempool(),
+				//state.LastBlockHeight,
+				nil,
+				mempl.WithMetricsTxFastMpool(memplMetrics),
+				mempl.WithPreCheckTxFastMpool(sm.TxPreCheck(state)),
+				mempl.WithPostCheckTxFastMpool(sm.TxPostCheck(state)),
+			)
+		} else {
+			mp = mempl.NewTxMempool(
+				logger,
+				config.Mempool,
+				proxyApp.Mempool(),
+				//state.LastBlockHeight,
+				nil,
+				mempl.WithMetricsTxMpool(memplMetrics),
+				mempl.WithPreCheckTxMpool(sm.TxPreCheck(state)),
+				mempl.WithPostCheckTxMpool(sm.TxPostCheck(state)),
+			)
+		}
 		reactor := mempl.NewReactor(
 			config.Mempool,
 			mp,

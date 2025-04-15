@@ -2,6 +2,8 @@ package mempool
 
 import (
 	"errors"
+	"github.com/cometbft/cometbft/libs/clist"
+	"github.com/cometbft/cometbft/libs/log"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/service"
@@ -14,6 +16,25 @@ import (
 // The ABCI app is responsible for storing, disseminating, and proposing transactions.
 // See [ADR-111](../docs/architecture/adr-111-nop-mempool.md).
 type NopMempool struct{}
+
+func (m *NopMempool) TxStore() *TxStore {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *NopMempool) WaitForNextTx() <-chan struct{} {
+	return nil
+}
+
+func (m *NopMempool) NextGossipTx() *clist.CElement {
+
+	return nil
+}
+
+func (m *NopMempool) SetLogger(l log.Logger) {
+	//TODO nothing
+
+}
 
 // errNotAllowed indicates that the operation is not allowed with `nop` mempool.
 var errNotAllowed = errors.New("not allowed with `nop` mempool")

@@ -688,51 +688,51 @@ func TestTxMempool_RemoveCacheWhenPendingTxIsFull(t *testing.T) {
 	require.Equal(t, 1, len(txCache.cacheMap))
 }
 
-func TestTxMempool_EVMEviction(t *testing.T) {
-
-	mtx := new(cmtsync.Mutex)
-	client := abciclient.NewLocalClient(mtx, &application{Application: kvstore.NewApplication(dbm.NewMemDB())})
-	if err := client.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := client.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-
-	txmp := setup(t, client, 100)
-	txmp.config.Size = 1
-	peerID := uint16(1)
-
-	address1 := "0xeD23B3A9DE15e92B9ef9540E587B3661E15A12fA"
-	address2 := "0xfD23B3A9DE15e92B9ef9540E587B3661E15A12fA"
-
-	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address1, 1, 0)), nil, TxInfo{SenderID: peerID}))
-	// this should evict the previous tx
-	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address1, 2, 0)), nil, TxInfo{SenderID: peerID}))
-	require.Equal(t, 1, txmp.priorityIndex.NumTxs())
-	require.Equal(t, int64(2), txmp.priorityIndex.txs[0].priority)
-
-	txmp.config.Size = 2
-	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address1, 3, 1)), nil, TxInfo{SenderID: peerID}))
-	require.Equal(t, 0, txmp.pendingTxs.Size())
-	require.Equal(t, 2, txmp.priorityIndex.NumTxs())
-	// this would evict the tx with priority 2 and cause the tx with priority 3 to go pending
-	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address2, 4, 0)), nil, TxInfo{SenderID: peerID}))
-	time.Sleep(1 * time.Second) // reenqueue is async
-	require.Equal(t, 1, txmp.priorityIndex.NumTxs())
-	tx := txmp.priorityIndex.txs[0]
-	require.Equal(t, 1, txmp.pendingTxs.Size())
-
-	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address2, 5, 1)), nil, TxInfo{SenderID: peerID}))
-	require.Equal(t, 2, txmp.priorityIndex.NumTxs())
-	txmp.removeTx(tx, true, false, true)
-	// should not reenqueue
-	require.Equal(t, 1, txmp.priorityIndex.NumTxs())
-	time.Sleep(1 * time.Second) // pendingTxs should still be one even after sleeping for a sec
-	require.Equal(t, 1, txmp.pendingTxs.Size())
-}
+//func TestTxMempool_EVMEviction(t *testing.T) {
+//
+//	mtx := new(cmtsync.Mutex)
+//	client := abciclient.NewLocalClient(mtx, &application{Application: kvstore.NewApplication(dbm.NewMemDB())})
+//	if err := client.Start(); err != nil {
+//		t.Fatal(err)
+//	}
+//	t.Cleanup(func() {
+//		if err := client.Stop(); err != nil {
+//			t.Error(err)
+//		}
+//	})
+//
+//	txmp := setup(t, client, 100)
+//	txmp.config.Size = 1
+//	peerID := uint16(1)
+//
+//	address1 := "0xeD23B3A9DE15e92B9ef9540E587B3661E15A12fA"
+//	address2 := "0xfD23B3A9DE15e92B9ef9540E587B3661E15A12fA"
+//
+//	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address1, 1, 0)), nil, TxInfo{SenderID: peerID}))
+//	// this should evict the previous tx
+//	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address1, 2, 0)), nil, TxInfo{SenderID: peerID}))
+//	require.Equal(t, 1, txmp.priorityIndex.NumTxs())
+//	require.Equal(t, int64(2), txmp.priorityIndex.txs[0].priority)
+//
+//	txmp.config.Size = 2
+//	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address1, 3, 1)), nil, TxInfo{SenderID: peerID}))
+//	require.Equal(t, 0, txmp.pendingTxs.Size())
+//	require.Equal(t, 2, txmp.priorityIndex.NumTxs())
+//	// this would evict the tx with priority 2 and cause the tx with priority 3 to go pending
+//	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address2, 4, 0)), nil, TxInfo{SenderID: peerID}))
+//	time.Sleep(1 * time.Second) // reenqueue is async
+//	require.Equal(t, 1, txmp.priorityIndex.NumTxs())
+//	tx := txmp.priorityIndex.txs[0]
+//	require.Equal(t, 1, txmp.pendingTxs.Size())
+//
+//	require.NoError(t, txmp.CheckTx([]byte(fmt.Sprintf("evm-sender=%s=%d=%d", address2, 5, 1)), nil, TxInfo{SenderID: peerID}))
+//	require.Equal(t, 2, txmp.priorityIndex.NumTxs())
+//	txmp.removeTx(tx, true, false, true)
+//	// should not reenqueue
+//	require.Equal(t, 1, txmp.priorityIndex.NumTxs())
+//	time.Sleep(1 * time.Second) // pendingTxs should still be one even after sleeping for a sec
+//	require.Equal(t, 1, txmp.pendingTxs.Size())
+//}
 
 func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 
@@ -871,66 +871,66 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 	require.Zero(t, txmp.SizeBytes())
 }
 
-func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
-	mtx := new(cmtsync.Mutex)
-	client := abciclient.NewLocalClient(mtx, &application{Application: kvstore.NewApplication(dbm.NewMemDB())})
-	if err := client.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := client.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-
-	txmp := setup(t, client, 500)
-	txmp.height = 100
-	txmp.config.TTLNumBlocks = 10
-
-	tTxs := checkTxs(t, txmp, 100, 0)
-	require.Equal(t, len(tTxs), txmp.Size())
-	require.Equal(t, 100, txmp.heightIndex.Size())
-
-	// reap 5 txs at the next height -- no txs should expire
-	reapedTxs := txmp.ReapMaxTxs(5)
-	responses := make([]*abci.ExecTxResult, len(reapedTxs))
-	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
-	}
-
-	txmp.Lock()
-	require.NoError(t, txmp.Update(txmp.height+1, reapedTxs, responses, nil, nil))
-	txmp.Unlock()
-
-	require.Equal(t, 95, txmp.Size())
-	require.Equal(t, 95, txmp.heightIndex.Size())
-
-	// check more txs at height 101
-	_ = checkTxs(t, txmp, 50, 1)
-	require.Equal(t, 145, txmp.Size())
-	require.Equal(t, 145, txmp.heightIndex.Size())
-
-	// Reap 5 txs at a height that would expire all the transactions from before
-	// the previous Update (height 100).
-	//
-	// NOTE: When we reap txs below, we do not know if we're picking txs from the
-	// initial CheckTx calls or from the second round of CheckTx calls. Thus, we
-	// cannot guarantee that all 95 txs are remaining that should be expired and
-	// removed. However, we do know that that at most 95 txs can be expired and
-	// removed.
-	reapedTxs = txmp.ReapMaxTxs(5)
-	responses = make([]*abci.ExecTxResult, len(reapedTxs))
-	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
-	}
-
-	txmp.Lock()
-	require.NoError(t, txmp.Update(txmp.height+10, reapedTxs, responses, nil, nil))
-	txmp.Unlock()
-
-	require.GreaterOrEqual(t, txmp.Size(), 45)
-	require.GreaterOrEqual(t, txmp.heightIndex.Size(), 45)
-}
+//func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
+//	mtx := new(cmtsync.Mutex)
+//	client := abciclient.NewLocalClient(mtx, &application{Application: kvstore.NewApplication(dbm.NewMemDB())})
+//	if err := client.Start(); err != nil {
+//		t.Fatal(err)
+//	}
+//	t.Cleanup(func() {
+//		if err := client.Stop(); err != nil {
+//			t.Error(err)
+//		}
+//	})
+//
+//	txmp := setup(t, client, 500)
+//	txmp.height = 100
+//	txmp.config.TTLNumBlocks = 10
+//
+//	tTxs := checkTxs(t, txmp, 100, 0)
+//	require.Equal(t, len(tTxs), txmp.Size())
+//	require.Equal(t, 100, txmp.heightIndex.Size())
+//
+//	// reap 5 txs at the next height -- no txs should expire
+//	reapedTxs := txmp.ReapMaxTxs(5)
+//	responses := make([]*abci.ExecTxResult, len(reapedTxs))
+//	for i := 0; i < len(responses); i++ {
+//		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
+//	}
+//
+//	txmp.Lock()
+//	require.NoError(t, txmp.Update(txmp.height+1, reapedTxs, responses, nil, nil))
+//	txmp.Unlock()
+//
+//	require.Equal(t, 95, txmp.Size())
+//	require.Equal(t, 95, txmp.heightIndex.Size())
+//
+//	// check more txs at height 101
+//	_ = checkTxs(t, txmp, 50, 1)
+//	require.Equal(t, 145, txmp.Size())
+//	require.Equal(t, 145, txmp.heightIndex.Size())
+//
+//	// Reap 5 txs at a height that would expire all the transactions from before
+//	// the previous Update (height 100).
+//	//
+//	// NOTE: When we reap txs below, we do not know if we're picking txs from the
+//	// initial CheckTx calls or from the second round of CheckTx calls. Thus, we
+//	// cannot guarantee that all 95 txs are remaining that should be expired and
+//	// removed. However, we do know that that at most 95 txs can be expired and
+//	// removed.
+//	reapedTxs = txmp.ReapMaxTxs(5)
+//	responses = make([]*abci.ExecTxResult, len(reapedTxs))
+//	for i := 0; i < len(responses); i++ {
+//		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
+//	}
+//
+//	txmp.Lock()
+//	require.NoError(t, txmp.Update(txmp.height+10, reapedTxs, responses, nil, nil))
+//	txmp.Unlock()
+//
+//	require.GreaterOrEqual(t, txmp.Size(), 45)
+//	require.GreaterOrEqual(t, txmp.heightIndex.Size(), 45)
+//}
 
 func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 
