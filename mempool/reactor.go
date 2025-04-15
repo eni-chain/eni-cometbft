@@ -23,7 +23,7 @@ type Reactor struct {
 	p2p.BaseReactor
 	config *cfg.MempoolConfig
 	//mempool *CListMempool
-	mempool *TxMempool
+	mempool Mempool
 	ids     *mempoolIDs
 
 	// Semaphores to keep track of how many connections to peers are active for broadcasting
@@ -47,7 +47,7 @@ type Reactor struct {
 //	return memR
 //}
 
-func NewReactor(config *cfg.MempoolConfig, mempool *TxMempool) *Reactor {
+func NewReactor(config *cfg.MempoolConfig, mempool Mempool) *Reactor {
 	memR := &Reactor{
 		config:  config,
 		mempool: mempool,
@@ -136,8 +136,8 @@ func (memR *Reactor) AddPeer(peer p2p.Peer) {
 				}
 			}
 
-			memR.mempool.metrics.ActiveOutboundConnections.Add(1)
-			defer memR.mempool.metrics.ActiveOutboundConnections.Add(-1)
+			//memR.mempool.metrics.ActiveOutboundConnections.Add(1)
+			//defer memR.mempool.metrics.ActiveOutboundConnections.Add(-1)
 			memR.broadcastTxRoutine(peer)
 		}()
 	}
@@ -252,7 +252,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// https://github.com/tendermint/tendermint/issues/5796
 
 		//if !memTx.isSender(peerID) {
-		if ok := memR.mempool.txStore.TxHasPeer(memTx.hash, peerID); !ok {
+		if ok := memR.mempool.TxStore().TxHasPeer(memTx.hash, peerID); !ok {
 			success := peer.Send(p2p.Envelope{
 				ChannelID: MempoolChannel,
 				Message:   &protomem.Txs{Txs: [][]byte{memTx.tx}},

@@ -73,9 +73,10 @@ type WrappedTx struct {
 	removeHandler func(removeFromCache bool)
 
 	// evm properties that aid in prioritization
-	evmAddress string
-	evmNonce   uint64
-	isEVM      bool
+	evmAddress          string
+	evmNonce            uint64
+	isEVM               bool
+	isExpectedNextNonce bool
 }
 
 // IsBefore returns true if the WrappedTx is before the given WrappedTx
