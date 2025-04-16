@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"github.com/cometbft/cometbft/libs/log"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/clist"
@@ -13,6 +14,26 @@ import (
 //-----------------------------------------------------------------------------
 
 type emptyMempool struct{}
+
+func (txmp emptyMempool) TxStore() *mempl.TxStore {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (txmp emptyMempool) WaitForNextTx() <-chan struct{} {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (txmp emptyMempool) NextGossipTx() *clist.CElement {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (txmp emptyMempool) SetLogger(l log.Logger) {
+	//TODO implement me
+	panic("implement me")
+}
 
 var _ mempl.Mempool = emptyMempool{}
 

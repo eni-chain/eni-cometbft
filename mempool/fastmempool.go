@@ -154,6 +154,7 @@ func (txmp *FastTxMempool) TxStore() *TxStore {
 }
 
 func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseCheckTx), txInfo TxInfo) error {
+	//startTime := time.Now()
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
@@ -183,9 +184,11 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 		txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
 		return ErrTxInCache
 	}
+	//txmp.logger.Info("CheckTx  Push", "elapsedTime", time.Since(startTime).Microseconds())
 
+	//checkStartTime := time.Now()
 	res, err := txmp.proxyAppConn.CheckTx(context.TODO(), &abci.RequestCheckTx{Tx: tx})
-
+	//txmp.logger.Info("proxyAppConn.CheckTx ", "elapsedTime", time.Since(checkStartTime).Microseconds())
 	// when a transaction is removed/expired/rejected, this should be called
 	// The expire tx handler unreserves the pending nonce
 	removeHandler := func(removeFromCache bool) {
@@ -203,21 +206,22 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 	}
 
 	wtx := &WrappedTx{
-		tx:                  tx,
-		hash:                txHash,
-		timestamp:           time.Now().UTC(),
-		height:              txmp.height,
-		evmNonce:            res.EVMNonce,
-		evmAddress:          res.EVMSenderAddress,
-		isEVM:               res.IsEVM,
-		removeHandler:       removeHandler,
-		isExpectedNextNonce: res.IsPendingTransaction,
+		tx:                   tx,
+		hash:                 txHash,
+		timestamp:            time.Now().UTC(),
+		height:               txmp.height,
+		evmNonce:             res.EVMNonce,
+		evmAddress:           res.EVMSenderAddress,
+		isEVM:                res.IsEVM,
+		removeHandler:        removeHandler,
+		isPendingTransaction: res.IsPendingTransaction,
 	}
 
 	if err == nil {
 		// Concurrent mode, can directly added
 		err = txmp.addNewTransaction(wtx, res.ResponseCheckTx, txInfo)
 		if err != nil {
+			txmp.logger.Info("addNewTransaction failed ", "error", err.Error())
 			return err
 		}
 	}
@@ -225,7 +229,7 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 	if callback != nil {
 		callback(res.ResponseCheckTx)
 	}
-
+	//txmp.logger.Info("checkTx ", "elapsedTime", time.Since(startTime).Microseconds(), "start time", startTime.Format(time.StampMicro))
 	return nil
 }
 
@@ -256,12 +260,14 @@ func (txmp *FastTxMempool) removeTx(wtx *WrappedTx, removeFromCache bool, should
 }
 
 func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
+	txmp.Lock()
+	defer txmp.Unlock()
 	var (
 		totalGas        int64
 		totalSize       int64
 		nonzeroGasTxCnt int64
 	)
-
+	startTime := time.Now()
 	var txs []types.Tx
 
 	//txsTable := make([][]types.Tx, len(txmp.TxQueues))
@@ -278,6 +284,10 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 			//	return false
 			//}
 
+			if len(txs) > 10000 {
+				return false
+			}
+
 			if maxGas > -1 && gas > maxGas {
 				return false
 			}
@@ -291,7 +301,7 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 			return true
 		})
 	}
-
+	txmp.logger.Info("ReapMaxBytesMaxGas end", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "start time", startTime.Format(time.StampMicro))
 	return txs
 }
 
@@ -314,7 +324,7 @@ func (txmp *FastTxMempool) Unlock() {
 func (txmp *FastTxMempool) Update(blockHeight int64, blockTxs types.Txs, execTxResult []*abci.ExecTxResult, newPreFn PreCheckFunc, newPostFn PostCheckFunc) error {
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
-
+	startTime := time.Now()
 	if newPreFn != nil {
 		txmp.preCheck = newPreFn
 	}
@@ -342,6 +352,8 @@ func (txmp *FastTxMempool) Update(blockHeight int64, blockTxs types.Txs, execTxR
 
 	txmp.metrics.Size.Set(float64(txmp.Size()))
 	txmp.metrics.SizeBytes.Set(float64(txmp.SizeBytes()))
+	txmp.logger.Info("Update fastMempool end", "elapsedTime", time.Since(startTime).Microseconds(), "block height", blockHeight, "tx len", blockTxs.Len(), "start time", startTime.Format(time.StampMicro))
+
 	return nil
 }
 
@@ -404,6 +416,9 @@ func (txmp *FastTxMempool) addNewTransaction(wtx *WrappedTx, res *abci.ResponseC
 					txmp.peerManager.Errored(txInfo.SenderP2PID, errors.New("checkTx error exceeded threshold"))
 				}
 			}
+		}
+		if err == nil {
+			return errors.New(res.Log)
 		}
 		return err
 	}
@@ -514,7 +529,10 @@ func (txmp *FastTxMempool) DistQueueIdx(sender string) int {
 		return 0
 	}
 
-	return int(sender[0] % uint8(queuesNum))
+	cleanAddr := strings.TrimPrefix(sender, "0x")
+	cleanAddr = strings.TrimPrefix(cleanAddr, "0X")
+
+	return int((cleanAddr[0] + cleanAddr[5] + cleanAddr[15]) % uint8(queuesNum))
 }
 
 // canAddTx returns an error if we cannot insert the provided *WrappedTx into

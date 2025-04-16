@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"errors"
+	"fmt"
 	"github.com/cometbft/cometbft/config"
 	"github.com/cometbft/cometbft/types"
 	"sync"
@@ -21,32 +22,32 @@ func NewAddressTxQueue() *AddressTxQueue {
 }
 
 func (queue *AddressTxQueue) AddTx(tx *WrappedTx) error {
-	nextNonce := uint64(0)
+	nextNonce := int64(-1)
 	if len(queue.isFetch) != 0 {
-		nextNonce = queue.isFetch[0].evmNonce
+		nextNonce = int64(queue.isFetch[0].evmNonce)
 	}
 
-	if !tx.isExpectedNextNonce {
-		if nextNonce == 0 {
+	if !tx.isPendingTransaction {
+		if nextNonce == -1 {
 			queue.isFetch = append(queue.isFetch, tx)
 			return nil
 		} else {
-			return errors.New("Tx already has a pending transaction ")
+			return errors.New("Tx already exist in the isFetch slice ")
 		}
 	}
 
-	if nextNonce == 0 {
+	if nextNonce == -1 {
 		_, ok := queue.pendingTxs[tx.evmNonce]
 		if !ok {
 			queue.pendingTxs[tx.evmNonce] = tx
 			return nil
 		} else {
-			return errors.New("Tx already has a pending transaction ")
+			return errors.New("Tx already has a pending transaction in pendingTxs ")
 		}
 	} else {
-		expectedNext := nextNonce + 1 + uint64(len(queue.isFetch))
+		expectedNext := uint64(nextNonce) + uint64(len(queue.isFetch))
 		if tx.evmNonce < expectedNext {
-			return errors.New("Tx already has a pending transaction ")
+			return errors.New(fmt.Sprintf("Tx nonce less than expected nonce,tx nonce[%d] expected nonce[%d]", tx.evmNonce, expectedNext))
 		} else if tx.evmNonce == expectedNext {
 			queue.isFetch = append(queue.isFetch, tx)
 			for len(queue.pendingTxs) != 0 {
@@ -67,10 +68,10 @@ func (queue *AddressTxQueue) AddTx(tx *WrappedTx) error {
 	return nil
 }
 
-func (queue AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCache bool) {
+func (queue *AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCache bool) {
 	for _, nTx := range queue.isFetch {
 		if nTx.evmNonce <= wtx.evmNonce {
-			queue.isFetch = queue.isFetch[1 : len(queue.isFetch)-1]
+			queue.isFetch = queue.isFetch[1:]
 			//txmp.metrics.RemovedTxs.Add(1)
 			atomic.AddInt64(&txmp.sizeBytes, int64(-nTx.Size()))
 			atomic.AddInt64(&txmp.totalTxCnt, -1)
@@ -86,11 +87,11 @@ func (queue AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFro
 	}
 }
 
-func (queue AddressTxQueue) GetTxs() []*WrappedTx {
+func (queue *AddressTxQueue) GetTxs() []*WrappedTx {
 	return queue.isFetch
 }
 
-func (queue AddressTxQueue) GetFirstTx(tx *WrappedTx) *WrappedTx {
+func (queue *AddressTxQueue) GetFirstTx(tx *WrappedTx) *WrappedTx {
 	if len(queue.isFetch) == 0 {
 		return nil
 	}
@@ -120,6 +121,7 @@ func (txq *FastTxQueue) delTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCac
 		return
 	}
 	txq.mtx.Lock()
+	defer txq.mtx.Unlock()
 	if wtx.isEVM {
 		queue, ok := txq.evmTx[wtx.evmAddress]
 		if ok {
@@ -133,7 +135,6 @@ func (txq *FastTxQueue) delTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCac
 		wtx.gossipEl.DetachPrev()
 	}
 
-	txq.mtx.Unlock()
 	txmp.txStore.RemoveTx(wtx)
 
 }
@@ -144,7 +145,7 @@ func (txq *FastTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCac
 
 func (txq *FastTxQueue) AddTx(txmp *FastTxMempool, wtx *WrappedTx) error {
 	txq.mtx.Lock()
-
+	defer txq.mtx.Unlock()
 	if !wtx.isEVM {
 		_, ok := txq.cosmosTx[wtx.hash]
 		if !ok {
@@ -165,7 +166,6 @@ func (txq *FastTxQueue) AddTx(txmp *FastTxMempool, wtx *WrappedTx) error {
 		gossipEl := txmp.gossipIndex.PushBack(wtx)
 		wtx.gossipEl = gossipEl
 	}
-	txq.mtx.Unlock()
 
 	txmp.txStore.SetTx(wtx)
 	//txmp.metrics.InsertedTxs.Add(1)
@@ -182,7 +182,8 @@ func (txq *FastTxQueue) ForEachTx(handler func(wtx *WrappedTx) bool) {
 		handler(wtx)
 	}
 	for _, queue := range txq.evmTx {
-		for _, wtx := range queue.GetTxs() {
+		fetchs := queue.GetTxs()
+		for _, wtx := range fetchs {
 			handler(wtx)
 		}
 	}

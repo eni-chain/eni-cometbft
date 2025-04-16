@@ -57,6 +57,21 @@ type CListMempool struct {
 	metrics *Metrics
 }
 
+func (mem *CListMempool) TxStore() *TxStore {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mem *CListMempool) WaitForNextTx() <-chan struct{} {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mem *CListMempool) NextGossipTx() *clist.CElement {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ Mempool = &CListMempool{}
 
 // CListMempoolOption sets an optional parameter on the mempool.
