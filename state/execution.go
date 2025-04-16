@@ -331,6 +331,7 @@ func (blockExec *BlockExecutor) applyBlock(state State, blockID types.BlockID, b
 		"height", block.Height,
 		"elapsed", float64(endTime-startTime)/1000000,
 		"function elapsed ", float64(endFTime-endTime)/1000000,
+		"time now", time.Now().Format(time.StampMicro),
 	)
 	return state, nil
 }
@@ -403,6 +404,7 @@ func (blockExec *BlockExecutor) Commit(
 	block *types.Block,
 	abciResponse *abci.ResponseFinalizeBlock,
 ) (int64, error) {
+	startTime := time.Now()
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -421,13 +423,6 @@ func (blockExec *BlockExecutor) Commit(
 		return 0, err
 	}
 
-	// ResponseCommit has no error code - just data
-	blockExec.logger.Info(
-		"committed state",
-		"height", block.Height,
-		"block_app_hash", fmt.Sprintf("%X", block.AppHash),
-	)
-
 	// Update mempool.
 	err = blockExec.mempool.Update(
 		block.Height,
@@ -435,6 +430,14 @@ func (blockExec *BlockExecutor) Commit(
 		abciResponse.TxResults,
 		TxPreCheck(state),
 		TxPostCheck(state),
+	)
+	// ResponseCommit has no error code - just data
+	blockExec.logger.Info(
+		"committed state",
+		"height", block.Height,
+		"block_app_hash", fmt.Sprintf("%X", block.AppHash),
+		"elapsed time", time.Since(startTime).Microseconds(),
+		"time now", time.Now().Format(time.StampMicro),
 	)
 
 	return res.RetainHeight, err
