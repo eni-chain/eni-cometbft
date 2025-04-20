@@ -230,6 +230,9 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 		callback(res.ResponseCheckTx)
 	}
 	//txmp.logger.Info("checkTx ", "elapsedTime", time.Since(startTime).Microseconds(), "start time", startTime.Format(time.StampMicro))
+	if atomic.LoadInt64(&txmp.totalTxCnt) == 10000 {
+		txmp.logger.Info("mempool finish 1w tx save ", "now time", time.Now().Format(time.StampMicro))
+	}
 	return nil
 }
 
@@ -270,8 +273,15 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 	startTime := time.Now()
 	var txs []types.Tx
 
+	txIsFetchTotal := 0
+	txIsPendingTotal := 0
 	//txsTable := make([][]types.Tx, len(txmp.TxQueues))
 	for i := 0; i < len(txmp.TxQueues); i++ {
+		for _, queue := range txmp.TxQueues[i].evmTx {
+			txIsFetchTotal += len(queue.isFetch)
+			txIsPendingTotal += len(queue.pendingTxs)
+		}
+
 		txmp.TxQueues[i].ForEachTx(func(wtx *WrappedTx) bool {
 			size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
 
@@ -301,7 +311,8 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 			return true
 		})
 	}
-	txmp.logger.Info("ReapMaxBytesMaxGas end", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "start time", startTime.Format(time.StampMicro))
+	txmp.logger.Info("ReapMaxBytesMaxGas end", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "totalTxCnt", atomic.LoadInt64(&txmp.totalTxCnt),
+		"start time", startTime.Format(time.StampMicro), "txIsPendingTotal len", txIsPendingTotal, "txIsFetchTotal len", txIsFetchTotal)
 	return txs
 }
 
