@@ -323,7 +323,7 @@ func (txmp *FastTxMempool) ReapMaxTxs(max int) types.Txs {
 		})
 	}
 
-	txmp.logger.Info("ReapMaxTxs", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "start time", startTime.Format(time.StampMicro))
+	txmp.logger.Debug("ReapMaxTxs", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "start time", startTime.Format(time.StampMicro))
 	return txs
 }
 
