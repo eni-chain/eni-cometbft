@@ -914,6 +914,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 		cs.mtx.Lock()
 		if added && cs.ProposalBlockParts.IsComplete() {
+			cs.Logger.Info("handleMsg ProposalBlockParts IsComplete", "now", time.Now().Format(time.StampMicro), "height", cs.Height)
 			cs.handleCompleteProposal(msg.Height)
 		}
 		if added {

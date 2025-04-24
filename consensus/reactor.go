@@ -27,7 +27,7 @@ const (
 	VoteChannel        = byte(0x22)
 	VoteSetBitsChannel = byte(0x23)
 
-	maxMsgSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
+	maxMsgSize = 1048576 * 100 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
 
 	blocksToContributeToBecomeGoodPeer = 10000
 	votesToContributeToBecomeGoodPeer  = 10000
@@ -327,6 +327,7 @@ func (conR *Reactor) Receive(e p2p.Envelope) {
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, int(msg.Part.Index))
 			conR.Metrics.BlockParts.With("peer_id", string(e.Src.ID())).Add(1)
+			conR.Logger.Info("Receive BlockPartMessage", "now", time.Now().Format(time.StampMicro), "height", conR.conS.Height, "peer_id", string(e.Src.ID()))
 			conR.conS.peerMsgQueue <- msgInfo{msg, e.Src.ID()}
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
@@ -557,6 +558,7 @@ OUTER_LOOP:
 					panic(err)
 				}
 				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
+				logger.Info("Start Sending block part", "height", prs.Height, "round", prs.Round, "now", time.Now().Format(time.StampMicro))
 				if peer.Send(p2p.Envelope{
 					ChannelID: DataChannel,
 					Message: &cmtcons.BlockPart{
@@ -567,6 +569,7 @@ OUTER_LOOP:
 				}) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
+				logger.Info("End Sending block part", "height", prs.Height, "round", prs.Round, "now", time.Now().Format(time.StampMicro))
 				continue OUTER_LOOP
 			}
 		}
