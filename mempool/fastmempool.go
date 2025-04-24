@@ -306,8 +306,25 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 }
 
 func (txmp *FastTxMempool) ReapMaxTxs(max int) types.Txs {
-	//TODO implement me
-	panic("implement me")
+	txmp.Lock()
+	defer txmp.Unlock()
+
+	startTime := time.Now()
+	var txs []types.Tx
+
+	for i := 0; i < len(txmp.TxQueues); i++ {
+		txmp.TxQueues[i].ForEachTx(func(wtx *WrappedTx) bool {
+			if len(txs) >= max {
+				return false
+			}
+
+			txs = append(txs, wtx.tx)
+			return true
+		})
+	}
+
+	txmp.logger.Info("ReapMaxTxs", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "start time", startTime.Format(time.StampMicro))
+	return txs
 }
 
 // Lock obtains a write-lock on the mempool. A caller must be sure to explicitly
