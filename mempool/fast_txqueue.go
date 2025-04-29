@@ -10,7 +10,7 @@ import (
 )
 
 type AddressTxQueue struct {
-	isFetch    []*WrappedTx
+	isFetch    []*WrappedTx          // Stores extractable transactions that add nonce values
 	pendingTxs map[uint64]*WrappedTx // key is nonce
 }
 
@@ -22,20 +22,24 @@ func NewAddressTxQueue() *AddressTxQueue {
 }
 
 func (queue *AddressTxQueue) AddTx(tx *WrappedTx) error {
+	//get nextNonce for queue
 	nextNonce := int64(-1)
 	if len(queue.isFetch) != 0 {
 		nextNonce = int64(queue.isFetch[0].evmNonce)
 	}
 
+	// handle first transactions of current block
 	if !tx.isPendingTransaction {
 		if nextNonce == -1 {
 			queue.isFetch = append(queue.isFetch, tx)
+			queue.updatePending(tx.evmNonce)
 			return nil
 		} else {
 			return errors.New("Tx already exist in the isFetch slice ")
 		}
 	}
 
+	// handle pending tx
 	if nextNonce == -1 {
 		_, ok := queue.pendingTxs[tx.evmNonce]
 		if !ok {
@@ -44,28 +48,36 @@ func (queue *AddressTxQueue) AddTx(tx *WrappedTx) error {
 		} else {
 			return errors.New("Tx already has a pending transaction in pendingTxs ")
 		}
-	} else {
-		expectedNext := uint64(nextNonce) + uint64(len(queue.isFetch))
-		if tx.evmNonce < expectedNext {
+	} else { // check tx state
+		expectedNext := queue.isFetch[len(queue.isFetch)-1].evmNonce + 1
+		if tx.evmNonce < expectedNext { // reduplicative tx
 			return errors.New(fmt.Sprintf("Tx nonce less than expected nonce,tx nonce[%d] expected nonce[%d]", tx.evmNonce, expectedNext))
-		} else if tx.evmNonce == expectedNext {
+		} else if tx.evmNonce == expectedNext { //is expected tx
 			queue.isFetch = append(queue.isFetch, tx)
-			for len(queue.pendingTxs) != 0 {
-				expectedNext += 1
-				nTx, ok := queue.pendingTxs[expectedNext]
-				if ok {
-					queue.isFetch = append(queue.isFetch, nTx)
-					delete(queue.pendingTxs, expectedNext)
-				} else {
-					return nil
-				}
+			queue.updatePending(tx.evmNonce)
+		} else { // is pending tx
+			_, ok := queue.pendingTxs[tx.evmNonce]
+			if !ok {
+				queue.pendingTxs[tx.evmNonce] = tx
+			} else {
+				return errors.New("Tx already has a pending transaction in pendingTxs ")
 			}
-		} else {
-			queue.pendingTxs[tx.evmNonce] = tx
-			return nil
 		}
 	}
 	return nil
+}
+
+func (queue *AddressTxQueue) updatePending(expectedNext uint64) {
+	for len(queue.pendingTxs) != 0 {
+		expectedNext++
+		nTx, ok := queue.pendingTxs[expectedNext]
+		if ok {
+			queue.isFetch = append(queue.isFetch, nTx)
+			delete(queue.pendingTxs, expectedNext)
+		} else {
+			break
+		}
+	}
 }
 
 func (queue *AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCache bool) {
@@ -85,6 +97,20 @@ func (queue *AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFr
 			break
 		}
 	}
+
+	//Update pending pool transactions to the isFetch pool
+	expectedNext := wtx.evmNonce
+	for len(queue.pendingTxs) != 0 && len(queue.isFetch) == 0 {
+		expectedNext += 1
+		nTx, ok := queue.pendingTxs[expectedNext]
+		if ok {
+			queue.isFetch = append(queue.isFetch, nTx)
+			delete(queue.pendingTxs, expectedNext)
+		} else {
+			break
+		}
+	}
+
 }
 
 func (queue *AddressTxQueue) GetTxs() []*WrappedTx {
