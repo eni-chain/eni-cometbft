@@ -1,6 +1,7 @@
 module github.com/cometbft/cometbft
 
 go 1.22.11
+toolchain go1.24.1
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -46,7 +47,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220708102147-0a8a51822cae
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.14.0
 	gonum.org/v1/gonum v0.15.1
 	google.golang.org/protobuf v1.36.4
 )
