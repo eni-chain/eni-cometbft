@@ -65,7 +65,8 @@ func TestGenesisGood(t *testing.T) {
 			"initial_height": "1000",
 			"consensus_params": null,
 			"validators": [{
-				"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},
+				"address": "2E33FF6494911FE8104C2E86042BC9D97F649B5A",
+				"pub_key":{"type":"tendermint/PubKeyEd25519","value":"iLo3BJIL0PbOFycqKvfQB36p9wwr0TQjvGrja6Z9ABE="},
 				"power":"10",
 				"name":""
 			}],
