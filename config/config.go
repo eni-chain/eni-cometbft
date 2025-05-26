@@ -623,9 +623,9 @@ func DefaultP2PConfig() *P2PConfig {
 		MaxNumOutboundPeers:          10,
 		PersistentPeersMaxDialPeriod: 0 * time.Second,
 		FlushThrottleTimeout:         100 * time.Millisecond,
-		MaxPacketMsgPayloadSize:      1024,    // 1 kB
-		SendRate:                     5120000, // 5 mB/s
-		RecvRate:                     5120000, // 5 mB/s
+		MaxPacketMsgPayloadSize:      10240000, // 10MB
+		SendRate:                     51200000, // 50 mB/s
+		RecvRate:                     51200000, // 50 mB/s
 		PexReactor:                   true,
 		SeedMode:                     false,
 		AllowDuplicateIP:             false,
@@ -828,14 +828,14 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:        "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
+		Size:        50000,
 		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
+		CacheSize:   50000,
 		MaxTxBytes:  1024 * 1024, // 1MB
 		ExperimentalMaxGossipConnectionsToNonPersistentPeers: 0,
 		ExperimentalMaxGossipConnectionsToPersistentPeers:    0,
 
-		PendingSize:         5000,
+		PendingSize:         50000,
 		MaxPendingTxsBytes:  1024 * 1024 * 1024, // 1GB
 		PendingTTLDuration:  0 * time.Second,
 		PendingTTLNumBlocks: 0,

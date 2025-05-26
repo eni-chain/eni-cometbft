@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	defaultMaxPacketMsgPayloadSize = 1024
+	defaultMaxPacketMsgPayloadSize = 1024000
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
@@ -39,9 +39,9 @@ const (
 
 	defaultSendQueueCapacity   = 1
 	defaultRecvBufferCapacity  = 4096
-	defaultRecvMessageCapacity = 22020096      // 21MB
-	defaultSendRate            = int64(512000) // 500KB/s
-	defaultRecvRate            = int64(512000) // 500KB/s
+	defaultRecvMessageCapacity = 22020096             // 21MB
+	defaultSendRate            = int64(512000) * 1000 // 500KB/s * 1000
+	defaultRecvRate            = int64(512000) * 1000 // 500KB/s * 1000
 	defaultSendTimeout         = 10 * time.Second
 	defaultPingInterval        = 60 * time.Second
 	defaultPongTimeout         = 45 * time.Second
