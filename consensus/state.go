@@ -831,17 +831,17 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			cs.handleTxsAvailable()
 
 		case mi = <-cs.peerMsgQueue:
-			cs.Logger.Info("receiveRoutine peerMsgQueue Write", "start now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
+			cs.Logger.Debug("receiveRoutine peerMsgQueue Write", "start now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
 			if err := cs.wal.Write(mi); err != nil {
 				cs.Logger.Error("failed writing to WAL", "err", err)
 			}
-			cs.Logger.Info("receiveRoutine peerMsgQueue Write", "end now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
+			cs.Logger.Debug("receiveRoutine peerMsgQueue Write", "end now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi)
 
 		case mi = <-cs.internalMsgQueue:
-			cs.Logger.Info("receiveRoutine internalMsgQueue WriteSync", "start now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
+			cs.Logger.Debug("receiveRoutine internalMsgQueue WriteSync", "start now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
 			err := cs.wal.Write(mi) // NOTE: fsync
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -849,7 +849,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 					mi, err,
 				))
 			}
-			cs.Logger.Info("receiveRoutine internalMsgQueue WriteSync", "end now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
+			cs.Logger.Debug("receiveRoutine internalMsgQueue WriteSync", "end now", time.Now().Format(time.StampMicro), "Msg", mi.PeerID)
 			if _, ok := mi.Msg.(*VoteMessage); ok {
 				// we actually want to simulate failing during
 				// the previous WriteSync, but this isn't easy to do.
