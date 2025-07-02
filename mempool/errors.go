@@ -9,7 +9,7 @@ import (
 var ErrTxNotFound = errors.New("transaction not found in mempool")
 
 // ErrTxInCache is returned to the client if we saw tx earlier
-var ErrTxInCache = errors.New("tx already exists in cache")
+var ErrTxInCache = errors.New("tx already exists in tx pool cache")
 
 // ErrRecheckFull is returned when checking if the mempool is full and
 // rechecking is still in progress after a new block was committed.

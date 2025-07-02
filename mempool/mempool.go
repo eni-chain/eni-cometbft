@@ -143,7 +143,7 @@ func PostCheckMaxGas(maxGas int64) PostCheckFunc {
 			return nil
 		}
 		if res.GasWanted < 0 {
-			return fmt.Errorf("gas wanted %d is negative",
+			return fmt.Errorf("gas wanted %d, gas fee is insufficient",
 				res.GasWanted)
 		}
 		if res.GasWanted > maxGas {
