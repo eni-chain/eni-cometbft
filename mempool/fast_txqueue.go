@@ -35,7 +35,7 @@ func (queue *AddressTxQueue) AddTx(tx *WrappedTx) error {
 			queue.updatePending(tx.evmNonce)
 			return nil
 		} else {
-			return errors.New("Tx already exist in the isFetch slice ")
+			return errors.New("Tx already exist in the fetch queue")
 		}
 	}
 
