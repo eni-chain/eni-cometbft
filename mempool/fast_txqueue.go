@@ -90,8 +90,8 @@ func (queue *AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFr
 
 			// Remove the transaction from the gossip index and cleanup the linked-list
 			// element so it can be garbage collected.
-			txmp.gossipIndex.Remove(wtx.gossipEl)
-			wtx.gossipEl.DetachPrev()
+			txmp.gossipIndex.Remove(nTx.gossipEl)
+			nTx.gossipEl.DetachPrev()
 			nTx.removeHandler(removeFromCache)
 		} else {
 			break
