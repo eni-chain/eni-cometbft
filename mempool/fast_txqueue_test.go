@@ -7,9 +7,8 @@ import (
 
 func TestAddressTxQueue_DelTx(t *testing.T) {
 
-	// 初始化 FastTxMempool 和 AddressTxQueue
 	txmp := &FastTxMempool{
-		gossipIndex: clist.New(), // 使用 clist 包初始化链表
+		gossipIndex: clist.New(),
 		sizeBytes:   0,
 		totalTxCnt:  0,
 	}
