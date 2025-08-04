@@ -117,6 +117,15 @@ func (queue *AddressTxQueue) GetTxs() []*WrappedTx {
 	return queue.isFetch
 }
 
+func (queue *AddressTxQueue) GetAllTxs() []*WrappedTx {
+	txs := make([]*WrappedTx, 0)
+	txs = append(txs, queue.isFetch...)
+	for _, tx := range queue.pendingTxs {
+		txs = append(txs, tx)
+	}
+	return txs
+}
+
 func (queue *AddressTxQueue) GetFirstTx(tx *WrappedTx) *WrappedTx {
 	if len(queue.isFetch) == 0 {
 		return nil
@@ -209,6 +218,21 @@ func (txq *FastTxQueue) ForEachTx(handler func(wtx *WrappedTx) bool) {
 	}
 	for _, queue := range txq.evmTx {
 		fetchs := queue.GetTxs()
+		for _, wtx := range fetchs {
+			handler(wtx)
+		}
+	}
+}
+
+func (txq *FastTxQueue) ForEachAllTx(handler func(wtx *WrappedTx) bool) {
+	txq.mtx.RLock()
+	defer txq.mtx.RUnlock()
+
+	for _, wtx := range txq.cosmosTx {
+		handler(wtx)
+	}
+	for _, queue := range txq.evmTx {
+		fetchs := queue.GetAllTxs()
 		for _, wtx := range fetchs {
 			handler(wtx)
 		}

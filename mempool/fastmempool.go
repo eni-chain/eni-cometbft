@@ -313,7 +313,7 @@ func (txmp *FastTxMempool) ReapMaxTxs(max int) types.Txs {
 	var txs []types.Tx
 
 	for i := 0; i < len(txmp.TxQueues); i++ {
-		txmp.TxQueues[i].ForEachTx(func(wtx *WrappedTx) bool {
+		txmp.TxQueues[i].ForEachAllTx(func(wtx *WrappedTx) bool {
 			if len(txs) >= max {
 				return false
 			}
