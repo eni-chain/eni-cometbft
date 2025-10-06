@@ -1,6 +1,6 @@
 module github.com/cometbft/cometbft
 
-go 1.22.11
+go 1.23
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -48,7 +48,7 @@ require (
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220708102147-0a8a51822cae
 	golang.org/x/sync v0.10.0
 	gonum.org/v1/gonum v0.15.1
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
@@ -87,7 +87,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
