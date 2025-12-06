@@ -205,7 +205,7 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 		res.Log = txmp.AppendCheckTxErr(res.Log, err.Error())
 	}
 
-	if res.GasWanted > int64(txmp.config.MaxBlockGas) {
+	if txmp.config.MaxBlockGas > 0 && res.GasWanted > int64(txmp.config.MaxBlockGas) {
 		return fmt.Errorf("Tx gaslimit large. block Max gas is %d ", txmp.config.MaxBlockGas)
 	}
 
