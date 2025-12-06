@@ -205,6 +205,10 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 		res.Log = txmp.AppendCheckTxErr(res.Log, err.Error())
 	}
 
+	if res.GasWanted > int64(txmp.config.MaxBlockGas) {
+		return fmt.Errorf("Tx gaslimit large. block Max gas is %d ", txmp.config.MaxBlockGas)
+	}
+
 	wtx := &WrappedTx{
 		tx:                   tx,
 		hash:                 txHash,
@@ -270,6 +274,15 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 	startTime := time.Now()
 	var txs []types.Tx
 
+	maxTxs := 10000
+	if txmp.config.PullMaxTxs != 0 {
+		maxTxs = int(txmp.config.PullMaxTxs)
+	}
+
+	if txmp.config.MaxBlockGas != 0 {
+		maxGas = int64(txmp.config.MaxBlockGas)
+	}
+
 	//txsTable := make([][]types.Tx, len(txmp.TxQueues))
 	for i := 0; i < len(txmp.TxQueues); i++ {
 		txmp.TxQueues[i].ForEachTx(func(wtx *WrappedTx) bool {
@@ -284,7 +297,7 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 			//	return false
 			//}
 
-			if len(txs) > 10000 {
+			if len(txs) > maxTxs {
 				return false
 			}
 

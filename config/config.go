@@ -816,6 +816,10 @@ type MempoolConfig struct {
 	// TxNotifyThreshold, if non-zero, defines the minimum number of transactions
 	// needed to trigger a notification in mempool's Tx notifier
 	TxNotifyThreshold uint64 `mapstructure:"tx-notify-threshold"`
+	// The maximum number of transactions that the consensus layer can pull each time (Temporary modification)
+	PullMaxTxs int64 `mapstructure:"pull_max_txs"`
+	// The maximum number of transactions that the consensus layer can pull each time is gas (Temporary modification)
+	MaxBlockGas uint64 `mapstructure:"max_block_gas"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the CometBFT mempool
@@ -839,6 +843,8 @@ func DefaultMempoolConfig() *MempoolConfig {
 		MaxPendingTxsBytes:  1024 * 1024 * 1024, // 1GB
 		PendingTTLDuration:  0 * time.Second,
 		PendingTTLNumBlocks: 0,
+		PullMaxTxs:          0,
+		MaxBlockGas:         0, //3kw
 	}
 }
 
