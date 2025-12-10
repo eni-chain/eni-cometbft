@@ -820,6 +820,8 @@ type MempoolConfig struct {
 	PullMaxTxs int64 `mapstructure:"pull_max_txs"`
 	// The maximum number of transactions that the consensus layer can pull each time is gas (Temporary modification)
 	MaxBlockGas uint64 `mapstructure:"max_block_gas"`
+	//The maximum gas for single transaction
+	MaxTxGas uint64 `mapstructure:"max_tx_gas"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the CometBFT mempool
@@ -845,6 +847,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		PendingTTLNumBlocks: 0,
 		PullMaxTxs:          0,
 		MaxBlockGas:         0, //3kw
+		MaxTxGas:            30000000,
 	}
 }
 

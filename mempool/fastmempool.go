@@ -189,6 +189,11 @@ func (txmp *FastTxMempool) CheckTx(tx types.Tx, callback func(*abci.ResponseChec
 	//checkStartTime := time.Now()
 	res, err := txmp.proxyAppConn.CheckTx(context.TODO(), &abci.RequestCheckTx{Tx: tx})
 	//txmp.logger.Info("proxyAppConn.CheckTx ", "elapsedTime", time.Since(checkStartTime).Microseconds())
+
+	if txmp.config.MaxTxGas != 0 && res.GasWanted > int64(txmp.config.MaxTxGas) {
+		return fmt.Errorf("tx gas too large, max gas is %d, but got %d", txmp.config.MaxTxGas, res.GasWanted)
+	}
+
 	// when a transaction is removed/expired/rejected, this should be called
 	// The expire tx handler unreserves the pending nonce
 	removeHandler := func(removeFromCache bool) {
