@@ -81,9 +81,11 @@ func (queue *AddressTxQueue) updatePending(expectedNext uint64) {
 }
 
 func (queue *AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFromCache bool) {
+	pos := 0
 	for _, nTx := range queue.isFetch {
 		if nTx.evmNonce <= wtx.evmNonce {
-			queue.isFetch = queue.isFetch[1:]
+			//queue.isFetch = queue.isFetch[1:]
+			pos++
 			//txmp.metrics.RemovedTxs.Add(1)
 			atomic.AddInt64(&txmp.sizeBytes, int64(-nTx.Size()))
 			atomic.AddInt64(&txmp.totalTxCnt, -1)
@@ -96,6 +98,12 @@ func (queue *AddressTxQueue) DelTx(txmp *FastTxMempool, wtx *WrappedTx, removeFr
 		} else {
 			break
 		}
+	}
+
+	if pos >= len(queue.isFetch) {
+		queue.isFetch = queue.isFetch[:0]
+	} else {
+		queue.isFetch = queue.isFetch[pos:]
 	}
 
 	//Update pending pool transactions to the isFetch pool
