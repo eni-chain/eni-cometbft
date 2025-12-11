@@ -398,7 +398,7 @@ func (txmp *FastTxMempool) Update(blockHeight int64, blockTxs types.Txs, execTxR
 
 	txmp.metrics.Size.Set(float64(txmp.Size()))
 	txmp.metrics.SizeBytes.Set(float64(txmp.SizeBytes()))
-	txmp.logger.Info("Update fastMempool end", "elapsedTime", time.Since(startTime).Microseconds(), "block height", blockHeight, "tx len", blockTxs.Len(), "start time", startTime.Format(time.StampMicro))
+	txmp.logger.Info("Update fastMempool end", "elapsedTime", time.Since(startTime).String(), "block height", blockHeight, "tx len", blockTxs.Len(), "start time", startTime.Format(time.StampMicro))
 
 	return nil
 }
