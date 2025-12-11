@@ -1833,10 +1833,10 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
 	if height == startNewBlockHeight {
-		spendTime := time.Since(startNewBlockTime).Milliseconds()
-		if spendTime > 0 {
+		spendTime := time.Since(startNewBlockTime)
+		if spendTime.Milliseconds() > 0 {
 			cs.Logger.Info("TPS A Block",
-				"spend time", spendTime,
+				"spend time", spendTime.String(),
 				"height", height,
 				"TPS", 1000*block.Txs.Len()/int(spendTime))
 		}

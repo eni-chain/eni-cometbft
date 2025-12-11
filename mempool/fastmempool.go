@@ -320,8 +320,16 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 		})
 	}
 
-	txmp.logger.Info("ReapMaxBytesMaxGas end", "elapsed time", time.Since(startTime).String(),
-		"fetch txs", len(txs), "total gas", totalGas, "total bytes", totalSize)
+	//txmp.height is last block height, if last block is 0, txmp.height is -1
+	height := txmp.height
+	if height == -1 {
+		height = 1
+	} else {
+		height += 1
+	}
+
+	txmp.logger.Info("ReapMaxBytesMaxGas end", "for block", height, "fetch txs", len(txs),
+		"total gas", totalGas, "total bytes", totalSize, "elapsed time", time.Since(startTime).String())
 
 	return txs
 }
