@@ -319,7 +319,10 @@ func (txmp *FastTxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs 
 			return true
 		})
 	}
-	txmp.logger.Info("ReapMaxBytesMaxGas end", "elapsedTime", time.Since(startTime).Microseconds(), "tx len", len(txs), "start time", startTime.Format(time.StampMicro))
+
+	txmp.logger.Info("ReapMaxBytesMaxGas end", "elapsed time", time.Since(startTime).String(),
+		"fetch txs", len(txs), "total gas", totalGas, "total bytes", totalSize)
+
 	return txs
 }
 
